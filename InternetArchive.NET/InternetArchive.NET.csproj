@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net6.0;netstandard2.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>10.0</LangVersion>
+    <RootNamespace>InternetArchive</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Copyright>Copyright © 2022 Experimental Television Center Ltd.</Copyright>
+    <License>MIT</License>
+    <Authors>ETC</Authors>
+    <PackageId>InternetArchive.NET</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/experimentaltvcenter/InternetArchive.NET</PackageProjectUrl>
+    <PackageTags>archive.org;internet-archive;wayback-machine</PackageTags>
+    <Description>Provides access to all API services at Internet Archive (archive.org)</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="6.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="6.0.5" />
+    <PackageReference Include="System.Text.Json" Version="6.0.4" />
+  </ItemGroup>
+
+</Project>

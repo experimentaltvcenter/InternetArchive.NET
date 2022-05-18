@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32328.378
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternetArchive.NET.Tests", "InternetArchive.NET.Tests\InternetArchive.NET.Tests.csproj", "{502C9EE9-E0C0-4CC6-A2BE-FE03D9EF6AC4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternetArchive.NET", "InternetArchive.NET\InternetArchive.NET.csproj", "{D7563BB7-F6DA-4E75-BD80-F2211F8B8D62}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{502C9EE9-E0C0-4CC6-A2BE-FE03D9EF6AC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{502C9EE9-E0C0-4CC6-A2BE-FE03D9EF6AC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{502C9EE9-E0C0-4CC6-A2BE-FE03D9EF6AC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{502C9EE9-E0C0-4CC6-A2BE-FE03D9EF6AC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7563BB7-F6DA-4E75-BD80-F2211F8B8D62}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7563BB7-F6DA-4E75-BD80-F2211F8B8D62}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7563BB7-F6DA-4E75-BD80-F2211F8B8D62}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7563BB7-F6DA-4E75-BD80-F2211F8B8D62}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {39E5EF5D-374E-427E-904F-3BB6CB8CDAFD}
+	EndGlobalSection
+EndGlobal
