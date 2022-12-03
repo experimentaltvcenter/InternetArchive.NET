@@ -6,7 +6,7 @@ public class MetadataTests
     [TestMethod]
     public async Task ReadMetadataAsync()
     {
-        using var response = await _client.Metadata.ReadAsync(_config.ReadOnlyItem);
+        using var response = await _client.Metadata.ReadAsync(_config.TestItem);
         
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.DataNodePrimary);
@@ -27,7 +27,7 @@ public class MetadataTests
         var collection = response.Metadata.RootElement.EnumerateObject().Where(x => x.NameEquals("collection")).SingleOrDefault();
         Assert.IsNotNull(collection);
 
-        var file = response.Files.Where(x => x.Format == "Text").SingleOrDefault();
+        var file = response.Files.Where(x => x.Format == "Text" && x.Name == _config.RemoteFilename).SingleOrDefault();
 
         Assert.IsNotNull(file);
         Assert.IsNotNull(file.Crc32);
@@ -44,7 +44,7 @@ public class MetadataTests
     [TestMethod]
     public async Task WriteMetadataAsync()
     {
-        using var readResponse1 = await _client.Metadata.ReadAsync(_config.ReadOnlyItem);
+        using var readResponse1 = await _client.Metadata.ReadAsync(_config.TestItem);
 
         var patch = new JsonPatchDocument();
         string value;
@@ -60,7 +60,7 @@ public class MetadataTests
             patch.Add("/testkey", value);
         }
 
-        var writeResponse = await _client.Metadata.WriteAsync(_config.ReadOnlyItem, patch);
+        var writeResponse = await _client.Metadata.WriteAsync(_config.TestItem, patch);
         
         Assert.IsNotNull(writeResponse);
         Assert.IsTrue(writeResponse.Success);
@@ -68,7 +68,7 @@ public class MetadataTests
         Assert.IsNotNull(writeResponse.Log);
         Assert.IsNotNull(writeResponse.TaskId);
 
-        using var readResponse2 = await _client.Metadata.ReadAsync(_config.ReadOnlyItem);
+        using var readResponse2 = await _client.Metadata.ReadAsync(_config.TestItem);
         Assert.AreEqual(value, readResponse2?.Metadata?.RootElement.GetProperty("testkey").GetString());
     }
 }

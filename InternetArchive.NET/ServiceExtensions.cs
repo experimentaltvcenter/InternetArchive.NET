@@ -7,13 +7,23 @@ namespace InternetArchive;
 
 public static class ServiceExtensions
 {
-    private static IPolicyRegistry<string>? _pollyRegistry = null;
-    internal static IServiceCollection? _services = null;
+    public static IServiceCollection Services { get; private set; } = new ServiceCollection();
+    private static readonly Lazy<IPolicyRegistry<string>> PolicyRegistry = new(() => Services.AddPolicyRegistry());
+
+    internal static IServiceCollection InitDefaults(this IServiceCollection services)
+    {
+        if (!services.Any(x => x.ServiceType == typeof(Client))) 
+        {
+            services.AddInternetArchiveServices().AddInternetArchiveDefaultRetryPolicies();
+        }
+
+        return services;
+    }
 
     public static IServiceCollection AddInternetArchiveServices(this IServiceCollection services, TimeSpan? timeout = null)
     {
         services.AddTransient<Client>();
-        _pollyRegistry = services.AddPolicyRegistry();
+        var logger = services.BuildServiceProvider().GetService<ILoggerFactory>()?.CreateLogger(Client.Name);
 
         services.AddHttpClient(Name, client =>
         {
@@ -30,21 +40,25 @@ public static class ServiceExtensions
             UseCookies = false
         })
         .AddPolicyHandlerFromRegistry("RetryPolicy")
+        .AddPolicyHandlerFromRegistry("RetryPutPolicy")
         .AddPolicyHandlerFromRegistry("ServiceUnavailablePolicy")
         .AddPolicyHandlerFromRegistry("TooManyRequestsPolicy");
 
-        _services = services;
         return services;
     }
 
     public static IServiceCollection AddInternetArchiveDefaultRetryPolicies(this IServiceCollection services)
     {
-        var logger = services.BuildServiceProvider().GetService<ILoggerFactory>()?.CreateLogger(Client.Name);
+        var logger = services.BuildServiceProvider().GetService<ILoggerFactory>()?.CreateLogger(Name);
 
-        var noRetryCodes = new HashSet<HttpStatusCode> { 
+        var HttpStatusCode_TooManyRequests = (HttpStatusCode)429;
+
+        var noRetryCodes = new HashSet<HttpStatusCode> {
             HttpStatusCode.ServiceUnavailable,
-            (HttpStatusCode) 429, // TooManyRequests
-            HttpStatusCode.Unauthorized 
+            HttpStatusCode_TooManyRequests,
+            HttpStatusCode.Unauthorized,
+            HttpStatusCode.BadRequest,
+            HttpStatusCode.NotFound
         };
 
         var retryPolicy = Policy
@@ -54,6 +68,15 @@ public static class ServiceExtensions
                 onRetry: (response, delay, retryAttempt, context) =>
                 {
                     logger?.LogInformation("HTTP status {statusCode} retry #{retryAttempt} delay {delay}", (int) response.Result.StatusCode, retryAttempt, delay);
+                });
+
+        var retryPutPolicy = Policy
+            .HandleResult<HttpResponseMessage>(r => r.StatusCode == HttpStatusCode.NotFound && r.RequestMessage?.Method == HttpMethod.Put)
+            .WaitAndRetryAsync(
+                new[] { TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(60) },
+                onRetry: (response, delay, retryAttempt, context) =>
+                {
+                    logger?.LogInformation("HTTP PUT status {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, delay);
                 });
 
         var serviceUnavailablePolicy = Policy
@@ -66,7 +89,7 @@ public static class ServiceExtensions
                 });
 
         var tooManyRequestsPolicy = Policy
-            .HandleResult<HttpResponseMessage>(r => r.StatusCode == (HttpStatusCode) 429)
+            .HandleResult<HttpResponseMessage>(r => r.StatusCode == HttpStatusCode_TooManyRequests)
             .WaitAndRetryAsync(
                 retryCount: 3,
                 sleepDurationProvider: (retryCount, response, context) => 
@@ -82,21 +105,22 @@ public static class ServiceExtensions
                 },
                 onRetryAsync: async (response, timespan, retryAttempt, context) => 
                 {
-                    await Task.FromResult(0);
+                    await Task.FromResult(0).ConfigureAwait(false);
                     logger?.LogInformation("HTTP error {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, timespan);
                 });
 
-        AddPolicy("RetryPolicy", retryPolicy);
-        AddPolicy("ServiceUnavailablePolicy", serviceUnavailablePolicy);
-        AddPolicy("TooManyRequestsPolicy", tooManyRequestsPolicy);
+        services
+            .AddPolicy("RetryPolicy", retryPolicy)
+            .AddPolicy("RetryPutPolicy", retryPutPolicy)
+            .AddPolicy("ServiceUnavailablePolicy", serviceUnavailablePolicy)
+            .AddPolicy("TooManyRequestsPolicy", tooManyRequestsPolicy);
 
-        _services = services;
         return services;
     }
 
-    public static void AddPolicy(string name, IAsyncPolicy<HttpResponseMessage> policy)
+    public static IServiceCollection AddPolicy(this IServiceCollection services, string name, IAsyncPolicy<HttpResponseMessage> policy)
     {
-        if (_pollyRegistry == null) throw new Exception("Call AddInternetArchiveServices() first");
-        _pollyRegistry.Add(name, policy);
+        PolicyRegistry.Value.Add(name, policy);
+        return services;
     }
 }

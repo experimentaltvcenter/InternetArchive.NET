@@ -42,7 +42,7 @@ public class Reviews
 
     public async Task<GetResponse> GetAsync(string identifier)
     {
-        var response = await _client.GetAsync<GetResponse>(Url(identifier));
+        var response = await _client.GetAsync<GetResponse>(Url(identifier)).ConfigureAwait(false);
         response.EnsureSuccess();
         return response;
     }
@@ -74,7 +74,7 @@ public class Reviews
     {
         if (request.Identifier == null) throw new Exception("identifier required");
 
-        var response = await _client.SendAsync<AddOrUpdateResponse>(HttpMethod.Post, Url(request.Identifier), request);
+        var response = await _client.SendAsync<AddOrUpdateResponse>(HttpMethod.Post, Url(request.Identifier), request).ConfigureAwait(false);
         response?.EnsureSuccess();
         return response;
     }
@@ -98,7 +98,7 @@ public class Reviews
             Method = HttpMethod.Delete
         };
 
-        var response = await _client.SendAsync<DeleteResponse>(httpRequest);
+        var response = await _client.SendAsync<DeleteResponse>(httpRequest).ConfigureAwait(false);
         response?.EnsureSuccess();
         return response;
     }

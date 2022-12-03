@@ -14,6 +14,7 @@ global using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 namespace InternetArchiveTests;
 
@@ -27,20 +28,22 @@ public class Init
     internal static DateTime _startDateTime, _endDateTime;
 
     [AssemblyInitialize]
-    public static async Task TestInitialize(TestContext testContext)
+    public static async Task TestInitialize(TestContext _)
     {
-        new ServiceCollection()
-            .AddInternetArchiveServices()
-            .AddInternetArchiveDefaultRetryPolicies()
-            .AddLogging(configure => configure.AddConsole());
-
         var configurationBuilder = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json")
             .AddJsonFile("appsettings.private.json", optional: true)
             .AddEnvironmentVariables()
             .Build();
 
-        _config = configurationBuilder.Get<Config>();
+        _config = configurationBuilder.Get<Config>() ?? throw new Exception("_config is null");
+
+        if (string.IsNullOrEmpty(_config.AccessKey))
+        {
+            throw new Exception("To run tests, please create a private settings file or set environment variables. For details visit https://github.com/experimentaltvcenter/InternetArchive.NET/blob/main/docs/DEVELOPERS.md#unit-tests");
+        }
+
+        ServiceExtensions.Services.AddLogging(configure => configure.AddConsole(options => options.FormatterName = ConsoleFormatterNames.Systemd));
 
         _client = Client.Create(_config.AccessKey, _config.SecretKey);
         _client.RequestInteractivePriority();
@@ -53,8 +56,17 @@ public class Init
 
         if (!File.Exists(_config.LocalFilename)) File.WriteAllText(_config.LocalFilename, "test file for unit tests - ok to delete");
 
-        using var response = await _client.Metadata.ReadAsync(_config.ReadOnlyItem);
-        if (!response.Files.Any()) await CreateTestItemAsync(_config.ReadOnlyItem);
+        using var response = await _client.Metadata.ReadAsync(_config.TestItem);
+        if (response.IsDark == true)
+        {
+            await _client.Tasks.MakeUndarkAsync(_config.TestItem, "used in automated tests");
+            await WaitForServerAsync(_config.TestItem);
+        }
+
+        if (!response.Files.Any(x => x.Format == "Text" && x.Name == _config.RemoteFilename))
+        {
+            await CreateTestItemAsync(_config.TestItem);
+        }
     }
 
     public static async Task<string> CreateTestItemAsync(string? identifier = null, IEnumerable<KeyValuePair<string, object?>>? extraMetadata = null)
@@ -65,7 +77,7 @@ public class Init
         {
             new KeyValuePair<string, object?>("collection", "test_collection"),
             new KeyValuePair<string, object?>("mediatype", "texts"),
-            new KeyValuePair<string, object?>("noindex", true),
+            new KeyValuePair<string, object?>("noindex", "true"),
         };
 
         if (extraMetadata != null) metadata.AddRange(extraMetadata);
@@ -95,7 +107,7 @@ public class Init
             var summary = response.Value!.Summary!;
             Assert.IsTrue(summary.Error == 0);
 
-            if (summary.Queued == 0 && summary.Running == 0 && summary.Paused == 0) return;
+            if (summary.Queued == 0 && summary.Running == 0) return;
             await Task.Delay(secondsBetween * 1000);
         }
 

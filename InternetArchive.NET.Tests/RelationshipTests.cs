@@ -11,19 +11,29 @@ public class RelationshipTests
             Assert.Inconclusive("Skipping test because _config.TestCollection is null");
         }
 
-        await _client.Relationships.AddAsync(_config.ReadOnlyItem, _config.TestCollection, _config.TestList);
-        var parents = await _client.Relationships.GetParentsAsync(_config.ReadOnlyItem);
+        var response = await _client.Relationships.AddAsync(_config.TestItem, _config.TestCollection, _config.TestList);
+        Assert.IsTrue(response?.Success);
+
+        var parents = await _client.Relationships.GetParentsAsync(_config.TestItem);
         Assert.IsTrue(parents.Lists.ContainsKey(_config.TestCollection), "Item not added to collection");
 
-        await _client.Relationships.RemoveAsync(_config.ReadOnlyItem, _config.TestCollection, _config.TestList);
-        parents = await _client.Relationships.GetParentsAsync(_config.ReadOnlyItem);
+        var children = await _client.Relationships.GetChildrenAsync(_config.TestCollection, _config.TestList);
+        Assert.IsNotNull(children);
+        // can't test this because query API is not in immediate sync with metadata API and there is no identifier to wait on
+        // await WaitForServerAsync(_config.TestCollection)
+
+        response = await _client.Relationships.RemoveAsync(_config.TestItem, _config.TestCollection, _config.TestList);
+        Assert.IsTrue(response?.Success);
+
+        parents = await _client.Relationships.GetParentsAsync(_config.TestItem);
+        Assert.IsNotNull(parents?.Error); // no parent so returns error string
         Assert.IsFalse(parents.Lists.ContainsKey(_config.TestCollection), "Item not removed from collection");
     }
 
     [TestMethod]
     public async Task ParentChildAsync()
     {
-        var children = await _client.Relationships.GetChildrenAsync(_config.TestParent);
+        var children = await _client.Relationships.GetChildrenAsync(_config.TestParent, rows: 1);
 
         string? testChild = children.Identifiers().FirstOrDefault();
         Assert.IsNotNull(testChild);
@@ -35,13 +45,15 @@ public class RelationshipTests
     [TestMethod]
     public async Task GetChildrenAsync()
     {
-        var children = await _client.Relationships.GetChildrenAsync(_config.TestParent);
+        var children = await _client.Relationships.GetChildrenAsync(_config.TestParent, rows: 7);
 
         Assert.IsNotNull(children);
         Assert.IsNotNull(children.Response);
         Assert.IsNotNull(children.Response.Docs);
         Assert.IsNotNull(children.Response.NumFound);
         Assert.IsNotNull(children.Response.Start);
+
+        Assert.AreEqual(7, children.Response.Docs.Count());
     }
 
     [TestMethod]

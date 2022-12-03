@@ -25,6 +25,9 @@ public class Metadata
         [JsonPropertyName("solo")]
         public bool? DataNodeSolo { get; set; }
 
+        [JsonPropertyName("is_dark")]
+        public bool? IsDark { get; set; }
+
         public string Dir { get; set; } = null!;
 
         public IEnumerable<File> Files { get; set; } = Enumerable.Empty<File>();
@@ -95,7 +98,7 @@ public class Metadata
 
     public async Task<ReadResponse> ReadAsync(string identifier)
     {
-        return await _client.GetAsync<ReadResponse>(Url(identifier));
+        return await _client.GetAsync<ReadResponse>(Url(identifier)).ConfigureAwait(false);
     }
 
     public class WriteResponse : ServerResponse
@@ -116,7 +119,7 @@ public class Metadata
         };
 
         var httpContent = new FormUrlEncodedContent(formData);
-        var writeMetadataResponse = await _client.SendAsync<WriteResponse>(HttpMethod.Post, url, httpContent);
+        var writeMetadataResponse = await _client.SendAsync<WriteResponse>(HttpMethod.Post, url, httpContent).ConfigureAwait(false);
 
         writeMetadataResponse?.EnsureSuccess();
         return writeMetadataResponse;
@@ -125,6 +128,6 @@ public class Metadata
     public async Task<WriteResponse?> WriteAsync(string identifier, JsonPatchDocument patch)
     {
         var json = JsonSerializer.Serialize(patch.Operations);
-        return await WriteAsync(Url(identifier), "metadata", json);
+        return await WriteAsync(Url(identifier), "metadata", json).ConfigureAwait(false);
     }
 }

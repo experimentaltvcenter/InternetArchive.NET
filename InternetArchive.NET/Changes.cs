@@ -54,7 +54,7 @@ public class Changes
         }
 
         var httpContent = new FormUrlEncodedContent(formData);
-        var response = await _client.SendAsync<GetResponse>(HttpMethod.Post, Url, httpContent);
+        var response = await _client.SendAsync<GetResponse>(HttpMethod.Post, Url, httpContent).ConfigureAwait(false);
         if (response == null) throw new Exception("null response from server");
 
         return response;
@@ -62,28 +62,28 @@ public class Changes
 
     public async Task<GetResponse> GetFromBeginningAsync()
     {
-        return await GetHelperAsync(fromBeginning: true);
+        return await GetHelperAsync(fromBeginning: true).ConfigureAwait(false);
     }
 
     public async Task<GetResponse> GetStartingNowAsync()
     {
-        return await GetHelperAsync();
+        return await GetHelperAsync().ConfigureAwait(false);
     }
 
     public async Task<GetResponse> GetAsync(string token)
     {
-        return await GetHelperAsync(token);
+        return await GetHelperAsync(token).ConfigureAwait(false);
     }
 
     public async Task<GetResponse> GetAsync(DateTime startDate)
     {
-        return await GetHelperAsync(startDate: startDate);
+        return await GetHelperAsync(startDate: startDate).ConfigureAwait(false);
     }
 
 #if NET
     public async Task<GetResponse> GetAsync(DateOnly startDate)
     {
-        return await GetAsync(new DateTime(startDate.Year, startDate.Month, startDate.Day));
+        return await GetAsync(new DateTime(startDate.Year, startDate.Month, startDate.Day)).ConfigureAwait(false);
     }
 #endif
 }

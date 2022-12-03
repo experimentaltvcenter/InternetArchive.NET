@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace InternetArchiveTests;
 
 [TestClass]
@@ -27,5 +29,28 @@ public class JsonConverterTests
         using var test3 = JsonSerializer.Deserialize<Metadata.ReadResponse>(json);
 
         Assert.AreEqual(2, test3?.WorkableServers?.Count());
+    }
+
+    public class TestDateOnly
+    {
+        public DateOnly? TestDate { get; set; }
+    }
+
+    [TestMethod]
+    public void DateOnlyConverter()
+    {
+        var testDate = new DateOnly(2001, 01, 25);
+
+        var response = new TestDateOnly { TestDate = testDate };
+        var json = JsonSerializer.Serialize(response);
+
+        var test = JsonSerializer.Deserialize<TestDateOnly>(json);
+        Assert.IsNotNull(test);
+        Assert.AreEqual(testDate, test.TestDate);
+
+        json = "{ \"TestDate\" : null }";
+        test = JsonSerializer.Deserialize<TestDateOnly>(json);
+        Assert.IsNotNull(test);
+        Assert.IsNull(test.TestDate);
     }
 }

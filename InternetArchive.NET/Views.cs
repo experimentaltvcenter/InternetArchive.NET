@@ -55,7 +55,7 @@ public class Views
 
     public async Task<Summary> GetItemSummaryAsync(string identifier, bool legacy = false)
     {
-        var summaries = await GetItemSummaryAsync(new[] { identifier }, legacy);
+        var summaries = await GetItemSummaryAsync(new[] { identifier }, legacy).ConfigureAwait(false);
         if (summaries.Count == 0) throw new Exception("identifier not found");
         return summaries.First().Value;
     }
@@ -63,7 +63,7 @@ public class Views
     public async Task<Dictionary<string, Summary>> GetItemSummaryAsync(IEnumerable<string> identifiers, bool legacy = false)
     {
         string api = legacy ? "legacy_counts" : "short";
-        return await _client.GetAsync<Dictionary<string, Summary>>($"{Url}/{api}/{string.Join(",", identifiers)}");
+        return await _client.GetAsync<Dictionary<string, Summary>>($"{Url}/{api}/{string.Join(",", identifiers)}").ConfigureAwait(false);
     }
 
     public class SummaryPerDay<T>
@@ -74,12 +74,12 @@ public class Views
 
     public async Task<SummaryPerDay<T>> GetItemSummaryPerDayAsync<T>(string identifier)
     {
-        return await GetItemSummaryPerDayAsync<T>(new[] { identifier });
+        return await GetItemSummaryPerDayAsync<T>(new[] { identifier }).ConfigureAwait(false);
     }
 
     public async Task<SummaryPerDay<T>> GetItemSummaryPerDayAsync<T>(IEnumerable<string> identifiers)
     {
-        return await _client.GetAsync<SummaryPerDay<T>>($"{Url}/long/{string.Join(",", identifiers)}");
+        return await _client.GetAsync<SummaryPerDay<T>>($"{Url}/long/{string.Join(",", identifiers)}").ConfigureAwait(false);
     }
 
     public class Details<T>
@@ -130,17 +130,17 @@ public class Views
 
     public async Task<Details<T>> GetItemDetailsAsync<T>(string identifier, T startDate, T endDate)
     {
-        return await _client.GetAsync<Details<T>>(DetailsUrl("item", identifier, startDate, endDate));
+        return await _client.GetAsync<Details<T>>(DetailsUrl("item", identifier, startDate, endDate)).ConfigureAwait(false);
     }
 
     public async Task<Details<T>> GetCollectionDetailsAsync<T>(string collection, T startDate, T endDate)
     {
-        return await _client.GetAsync<Details<T>>(DetailsUrl("collection", collection, startDate, endDate));
+        return await _client.GetAsync<Details<T>>(DetailsUrl("collection", collection, startDate, endDate)).ConfigureAwait(false);
     }
 
     // documented but not currently implemented at archive.org
     internal async Task<Details<T>> GetContributorDetailsAsync<T>(string contributor, T startDate, T endDate)
     {
-        return await _client.GetAsync<Details<T>>(DetailsUrl("contributor", contributor, startDate, endDate));
+        return await _client.GetAsync<Details<T>>(DetailsUrl("contributor", contributor, startDate, endDate)).ConfigureAwait(false);
     }
 }

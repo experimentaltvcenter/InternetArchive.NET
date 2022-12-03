@@ -1,4 +1,6 @@
-﻿namespace InternetArchive;
+﻿using System.Globalization;
+
+namespace InternetArchive;
 
 public class DateTimeOffsetNullableConverter : JsonConverter<DateTimeOffset?>
 {
@@ -42,6 +44,27 @@ public class DateTimeNullableConverter: JsonConverter<DateTime?>
     }
 }
 
+public class WaybackDateTimeOffsetNullableConverter : JsonConverter<DateTimeOffset?>
+{
+    public override DateTimeOffset? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        string? value = reader.GetString();
+        return string.IsNullOrEmpty(value) ? null : DateTimeOffset.ParseExact(value, Wayback.DateFormat, CultureInfo.InvariantCulture.DateTimeFormat);
+    }
+
+    public override void Write(Utf8JsonWriter writer, DateTimeOffset? dateTime, JsonSerializerOptions options)
+    {
+        if (dateTime == null)
+        {
+            writer.WriteNullValue();
+        }
+        else
+        {
+            writer.WriteStringValue(dateTime.Value.ToString(Wayback.DateFormat));
+        }
+    }
+}
+
 public class UnixEpochDateTimeNullableConverter: JsonConverter<DateTimeOffset?>
 {
     public override DateTimeOffset? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -66,6 +89,45 @@ public class UnixEpochDateTimeNullableConverter: JsonConverter<DateTimeOffset?>
         else
         {
             writer.WriteNumberValue(dateTime.Value.ToUnixTimeSeconds());
+        }
+    }
+}
+
+public class NullableStringToIntConverter : JsonConverter<int?>
+{
+    public override int? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        var list = new List<string>();
+
+        if (reader.TokenType == JsonTokenType.Null)
+        {
+            return null;
+        }
+        else if (reader.TokenType == JsonTokenType.String)
+        {
+            var s = reader.GetString();
+            if (s == null) return null;
+            return int.Parse(s);
+        }
+        else if (reader.TokenType == JsonTokenType.Number)
+        {
+            return reader.GetInt32();
+        }
+        else
+        {
+            throw new Exception("Unexpected token type");
+        }
+    }
+
+    public override void Write(Utf8JsonWriter writer, int? i, JsonSerializerOptions options)
+    {
+        if (i == null)
+        {
+            writer.WriteNullValue();
+        }
+        else
+        {
+            writer.WriteStringValue(i.ToString());
         }
     }
 }
@@ -114,20 +176,3 @@ public class EnumerableStringConverter : JsonConverter<IEnumerable<string>>
         }
     }
 }
-
-#if NET
-public class DateOnlyConverter: JsonConverter<DateOnly>
-{
-    public override DateOnly Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        string? value = reader.GetString();
-        if (value == null) throw new NullReferenceException();
-        return DateOnly.Parse(value);
-    }
-
-    public override void Write(Utf8JsonWriter writer, DateOnly value, JsonSerializerOptions options)
-    {
-        writer.WriteStringValue($"{value}:_dateOnlyFormatString");
-    }
-}
-#endif

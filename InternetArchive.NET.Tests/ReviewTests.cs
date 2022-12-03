@@ -6,7 +6,7 @@ public class ReviewTests
     [TestMethod]
     public async Task ReadUpdateDeleteAsync()
     {
-        string identifier = _config.ReadOnlyItem;
+        string identifier = _config.TestItem;
 
         try
         {

@@ -6,10 +6,11 @@
     <Nullable>enable</Nullable>
     <LangVersion>10.0</LangVersion>
     <RootNamespace>InternetArchive</RootNamespace>
+    <WarningsAsErrors>CA2007</WarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.0.0</Version>
+    <Version>2.0.0</Version>
     <Copyright>Copyright © 2022 Experimental Television Center Ltd.</Copyright>
     <License>MIT</License>
     <Authors>ETC</Authors>
@@ -29,10 +30,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="6.0.5" />
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>InternetArchive.NET.Tests</_Parameter1>
+    </AssemblyAttribute>
+    <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="7.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="6.0.5" />
-    <PackageReference Include="System.Text.Json" Version="6.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="7.0.0" />
+    <PackageReference Include="System.Text.Json" Version="7.0.0" />
   </ItemGroup>
 
 </Project>

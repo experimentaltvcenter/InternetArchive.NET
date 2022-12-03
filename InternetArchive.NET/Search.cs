@@ -161,12 +161,12 @@ public class Search
     public async Task<ScrapeResponse> ScrapeAsync(ScrapeRequest request)
     {
         var query = ScrapeHelper(request);
-        return await _client.GetAsync<ScrapeResponse>(Url, query);
+        return await _client.GetAsync<ScrapeResponse>(Url, query).ConfigureAwait(false);
     }
 
     public async Task<JsonDocument> ScrapeAsJsonAsync(ScrapeRequest request)
     {
         var query = ScrapeHelper(request);
-        return await _client.GetAsync<JsonDocument>(Url, query);
+        return await _client.GetAsync<JsonDocument>(Url, query).ConfigureAwait(false);
     }
 }

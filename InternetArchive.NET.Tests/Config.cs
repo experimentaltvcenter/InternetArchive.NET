@@ -5,8 +5,7 @@ internal class Config
     public string LocalFilename { get; } = "test.txt";
     public string RemoteFilename { get; } = "hello.txt";
 
-    public string ReadOnlyItem { get; set; } = "";
-    
+    public string TestItem { get; set; } = "";  
     public string TestList { get; set; } = "";
     public string TestCollection { get; set; } = "";
 

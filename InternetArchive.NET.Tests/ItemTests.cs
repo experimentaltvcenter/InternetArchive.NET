@@ -1,16 +1,37 @@
+using System.Text;
+
 namespace InternetArchiveTests;
 
 [TestClass]
 public class ItemTests
 {
+    private static string _largeTextPath = null!;
+
+    [ClassInitialize()]
+    public static void ClassInit(TestContext _)
+    {
+        var chars = Encoding.ASCII.GetBytes("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz          ");
+        var s = new byte[1024 * 1024 * 11]; // 11MB
+
+        var random = new Random();
+        for (int i = 0; i < s.Length; i++)
+        {
+            s[i] = chars[random.Next(chars.Length)];
+        }
+
+        _largeTextPath = Path.Combine(Path.GetTempPath(), "large.txt");
+        using var stream = File.Create(_largeTextPath);
+        stream.Write(s, 0, s.Length);
+    }
+
     [TestMethod]
     public async Task GetUseLimitAsync()
     {
-        var response = await _client.Item.GetUseLimitAsync(_config.ReadOnlyItem);
+        var response = await _client.Item.GetUseLimitAsync(_config.TestItem);
 
         Assert.IsNotNull(response);
 
-        Assert.AreEqual(_config.ReadOnlyItem, response.Bucket);
+        Assert.AreEqual(_config.TestItem, response.Bucket);
         Assert.AreEqual(0, response.OverLimit);
 
         Assert.IsNotNull(response.Detail);
@@ -44,7 +65,7 @@ public class ItemTests
     [TestMethod]
     public async Task CreateModifyDeleteAsync()
     {
-        const string _remoteFilename2 = "hello-again.txt";
+        const string _remoteFilename2 = "hello; again #2.txt";
 
         var extraMetadata = new List<KeyValuePair<string, object?>>
         {
@@ -102,7 +123,8 @@ public class ItemTests
 
         await _client.Item.DeleteAsync(new Item.DeleteRequest
         {
-             Bucket = $"{identifier}/{_remoteFilename2}",
+             Bucket = identifier,
+             RemoteFilename = _remoteFilename2,
              CascadeDelete = true,
              KeepOldVersion = false             
         });
@@ -117,7 +139,8 @@ public class ItemTests
 
         await _client.Item.DeleteAsync(new Item.DeleteRequest
         {
-            Bucket = $"{identifier}/{_config.RemoteFilename}",
+            Bucket = identifier,
+            RemoteFilename = _config.RemoteFilename,
             CascadeDelete = true,
             KeepOldVersion = false
         });
@@ -133,5 +156,81 @@ public class ItemTests
             await _client.Tasks.SubmitAsync(identifier, Tasks.Command.Delete);
             await WaitForServerAsync(identifier);
         }
+    }
+
+    private static Item.PutRequest CreateMultipartRequest(string identifier, bool createBucket = true)
+    {
+        var metadata = new List<KeyValuePair<string, object?>>
+        {
+            new KeyValuePair<string, object?>("collection", "test_collection"),
+            new KeyValuePair<string, object?>("mediatype", "texts"),
+            new KeyValuePair<string, object?>("noindex", "true"),
+        };
+
+        return new Item.PutRequest
+        {
+            Bucket = identifier,
+            LocalPath = _largeTextPath,
+            Metadata = metadata,
+            CreateBucket = createBucket,
+            NoDerive = true,
+            MultipartUploadMinimumSize = 0, // force multipart upload
+            MultipartUploadChunkSize = 1024 * 1024 * 5 // 5 MB chunks
+        };
+    }
+
+    [TestMethod]
+    public async Task AbortUpload()
+    {
+        string identifier = _config.TestItem;
+        var putRequest = CreateMultipartRequest(identifier);
+
+        await _client.Item.AbortUploadAsync(putRequest);
+        await WaitForServerAsync(identifier);
+    }
+
+    [TestMethod]
+    public async Task AbortAllBucketUploads()
+    {
+        string identifier = _config.TestItem;
+
+        await _client.Item.AbortUploadAsync(identifier);
+        await WaitForServerAsync(identifier);
+    }
+
+    [TestMethod]
+    public async Task StartThenAbortUpload()
+    {
+        string identifier = $"etc-tmp-{Guid.NewGuid():N}";
+        var putRequest = CreateMultipartRequest(identifier);
+
+        putRequest.MultipartUploadSkipParts = new[] { 1, 2 };
+
+        await _client.Item.PutAsync(putRequest);
+        await WaitForServerAsync(identifier);
+
+        await _client.Item.AbortUploadAsync(putRequest);
+    }
+
+    [TestMethod]
+    public async Task UploadMultipart()
+    {
+        string identifier = $"etc-tmp-{Guid.NewGuid():N}";
+        await _client.Item.PutAsync(CreateMultipartRequest(identifier));
+    }
+
+    [TestMethod]
+    public async Task UploadMultipartExistingWithContinue()
+    {
+        string identifier = _config.TestItem;
+        var putRequest = CreateMultipartRequest(identifier, createBucket: false);
+        putRequest.MultipartUploadSkipParts = new[] { 1, 2 };
+
+        await _client.Item.PutAsync(putRequest);
+
+        putRequest.MultipartUploadSkipParts = new List<int>();
+        await _client.Item.PutAsync(putRequest);
+
+        await WaitForServerAsync(identifier);
     }
 }

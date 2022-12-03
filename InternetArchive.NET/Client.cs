@@ -1,7 +1,9 @@
 ﻿global using Microsoft.AspNetCore.JsonPatch;
 global using Microsoft.AspNetCore.WebUtilities;
 global using Microsoft.Extensions.Logging;
+global using System.Collections.Concurrent;
 global using System.Security.Cryptography;
+global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
 
@@ -13,6 +15,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Xml;
+using System.Xml.Serialization;
 
 namespace InternetArchive;
 
@@ -25,15 +29,9 @@ public class Client
     public Client(ILogger? logger = null, ILoggerFactory? loggerFactory = null, HttpClient? httpClient = null, IHttpClientFactory? httpClientFactory = null)
     {
         _logger = logger ?? loggerFactory?.CreateLogger(Name) ?? NullLogger.Instance;
-        HttpClient = httpClient ?? httpClientFactory?.CreateClient(Name) ?? throw new Exception("Must pass an HttpClient or an HttpClientFactory");
+        HttpClient =  httpClientFactory?.CreateClient(Name) ?? httpClient ?? throw new Exception("Must pass an HttpClient or an HttpClientFactory");
 
-        if (_jsonSerializerOptions == null)
-        {
-            _jsonSerializerOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-#if NET
-            _jsonSerializerOptions.Converters.Add(new DateOnlyConverter());
-#endif
-        }
+        _jsonSerializerOptions ??= new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
         Changes = new Changes(this);
         Item = new Item(this);
@@ -43,6 +41,7 @@ public class Client
         Search = new Search(this);
         Tasks = new Tasks(this);
         Views = new Views(this);
+        Wayback = new Wayback(this);
     }
 
     private HttpClient HttpClient { get; set; }
@@ -65,7 +64,7 @@ public class Client
     }
 
     public bool ReadOnly { get; private set; }
-    public bool DryRun { get; set; }
+    public bool DryRun { get; private set; }
 
     internal string AccessKey { get; set; } = null!;
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
@@ -79,17 +78,18 @@ public class Client
     public Search Search { get; private set; }
     public Tasks Tasks { get; private set; }
     public Views Views { get; private set; }
+    public Wayback Wayback { get; private set; }
 
-    public static Client CreateReadOnly()
+    public static Client CreateReadOnly(bool dryRun = false)
     {
-        var client = GetClient(readOnly: true);
+        var client = GetClient(readOnly: true, dryRun);
         client.InitHttpClient();
         return client;
     }
 
-    public static Client Create(string accessKey, string secretKey)
+    public static Client Create(string accessKey, string secretKey, bool readOnly = false, bool dryRun = false)
     {
-        var client = GetClient(readOnly: false);
+        var client = GetClient(readOnly, dryRun);
 
         client.AccessKey = accessKey;
         client.SecretKey = secretKey;
@@ -98,56 +98,56 @@ public class Client
         return client;
     }
 
-    public static async Task<Client> CreateAsync(string? emailAddress = null, string? password = null, bool readOnly = false)
+    public static async Task<Client> CreateAsync(string? emailAddress = null, string? password = null, bool readOnly = false, bool dryRun = false)
     {
-        var client = GetClient(readOnly);
+        var client = GetClient(readOnly, dryRun);
 
         if (emailAddress == null || password == null)
         {
-            Console.WriteLine($"Log in to archive.org {(readOnly == true ? "(read-only)" : "")}");
+            var loginPrompt = new StringBuilder("Log in to archive.org");
+
+            var restrictions = new List<string>();
+            if (readOnly) restrictions.Add("readOnly");
+            if (dryRun) restrictions.Add("dryRun");
+            if (restrictions.Any()) loginPrompt.Append($" [{string.Join(", ", restrictions)}]");
+
+            Console.WriteLine(loginPrompt);
             Console.WriteLine();
 
             if (!readOnly)
             {
-                if (emailAddress == null)
+                string message = "Email address";
+                if (string.IsNullOrWhiteSpace(emailAddress))
                 {
-                    Console.Write("Email address: ");
+                    Console.Write($"{message}: ");
                     emailAddress = Console.ReadLine();
-
-                    if (emailAddress == null) throw new Exception("Email address required");
                 }
                 else
                 {
-                    Console.WriteLine($"Email address: {emailAddress}");
+                    Console.WriteLine($"{message}: {emailAddress}");
                 }
 
-                if (password == null)
-                {
-                    password = ReadPasswordFromConsole("Password: ");
-                }
+                if (string.IsNullOrWhiteSpace(emailAddress)) throw new Exception("Email address required");
+
+                password ??= ReadPasswordFromConsole("Password: ");
             }
         }
 
         if (!readOnly)
         {
-            await client.LoginAsync(emailAddress!, password!, readOnly);
+            await client.LoginAsync(emailAddress!, password!, readOnly).ConfigureAwait(false);
         }
 
         client.InitHttpClient();
         return client;
     }
 
-    private static Client GetClient(bool readOnly)
+    private static Client GetClient(bool readOnly, bool dryRun)
     {
-        if (ServiceExtensions._services == null)
-        {
-            ServiceExtensions._services = new ServiceCollection()
-                .AddInternetArchiveServices()
-                .AddInternetArchiveDefaultRetryPolicies();
-        }
-
-        var client = ServiceExtensions._services.BuildServiceProvider().GetRequiredService<Client>();
+        var client = ServiceExtensions.Services.InitDefaults().BuildServiceProvider().GetRequiredService<Client>();
+        
         client.ReadOnly = readOnly;
+        client.DryRun = dryRun;
 
         return client;
     }
@@ -167,7 +167,7 @@ public class Client
             RequestUri = new Uri(url)
         };
 
-        var response = await SendAsync<Response>(httpRequest);
+        var response = await SendAsync<Response>(httpRequest).ConfigureAwait(false);
         if (response == null) throw new Exception("null response from server");
         return response;
     }
@@ -176,6 +176,7 @@ public class Client
     internal async Task<Response?> SendAsync<Response>(HttpRequestMessage request)
     {
         Log(request);
+        if (request.RequestUri?.Scheme == "http" && ReadOnly == false) throw new Exception("Insecure call");
 
         if (ReadOnly && !_readOnlyMethods.Contains(request.Method))
         {
@@ -190,28 +191,38 @@ public class Client
             }
         }
 
-        var httpResponse = await HttpClient.SendAsync(request);
+        var httpResponse = await HttpClient.SendAsync(request).ConfigureAwait(false);
         Log(httpResponse);
         httpResponse.EnsureSuccessStatusCode();
-
-        if (typeof(Response) == typeof(string))
-        {
-            return (Response)(object) await httpResponse.Content.ReadAsStringAsync();
-        }
 
         if (typeof(Response) == typeof(HttpResponseMessage))
         {
             return (Response)(object)httpResponse;
         }
 
-        var json = await httpResponse.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<Response>(json, _jsonSerializerOptions);
+        var responseString = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+        if (typeof(Response) == typeof(string))
+        {
+            return (Response)(object)responseString;
+        }
+
+        if (httpResponse?.Content?.Headers?.ContentType?.MediaType == "application/xml")
+        {
+            var serializer = new XmlSerializer(typeof(Response));
+            var xmlReader = XmlReader.Create(new StringReader(responseString));
+            return (Response?) serializer.Deserialize(xmlReader);
+        }
+        else
+        {
+            return JsonSerializer.Deserialize<Response>(responseString, _jsonSerializerOptions);
+        }
     }
 
     internal async Task<Response?> SendAsync<Response>(HttpMethod httpMethod, string url, object content)
     {
         var json = JsonSerializer.Serialize(content, _jsonSerializerOptions);
-        var stringContent = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var httpRequest = new HttpRequestMessage
         {
@@ -220,7 +231,7 @@ public class Client
             Content = stringContent
         };
 
-        return await SendAsync<Response>(httpRequest);
+        return await SendAsync<Response>(httpRequest).ConfigureAwait(false);
     }
 
     internal async Task<Response?> SendAsync<Response>(HttpMethod httpMethod, string url, HttpContent content)
@@ -232,12 +243,12 @@ public class Client
             Content = content
         };
 
-        return await SendAsync<Response>(httpRequest);
+        return await SendAsync<Response>(httpRequest).ConfigureAwait(false);
     }
 
     private void Log(HttpRequestMessage request)
     {
-        var logLevel = LogLevel.Debug;
+        var logLevel = LogLevel.Information;
         if (!_logger.IsEnabled(logLevel)) return;
 
         _logger.Log(logLevel, "{method} {url}", request.Method, request.RequestUri);
@@ -259,7 +270,7 @@ public class Client
 
     private HttpResponseMessage Log(HttpResponseMessage response)
     {
-        var logLevel = LogLevel.Debug;
+        var logLevel = LogLevel.Information;
         if (_logger.IsEnabled(logLevel))
         {
             if (response.Headers.Any())
@@ -336,12 +347,12 @@ public class Client
         var httpContent = new FormUrlEncodedContent(formData);
 
         _logger.LogInformation("Logging in...");
-        var httpResponse = await HttpClient.PostAsync(url, httpContent);
+        var httpResponse = await HttpClient.PostAsync(url, httpContent).ConfigureAwait(false);
         Log(httpResponse);
 
         if (httpResponse == null) throw new NullReferenceException("httpResponse");
 
-        var json = await httpResponse.Content.ReadAsStringAsync();
+        var json = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
         var loginResponse = JsonSerializer.Deserialize<LoginResponse>(json, _jsonSerializerOptions);
 
         if (httpResponse.IsSuccessStatusCode)

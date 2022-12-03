@@ -34,7 +34,7 @@ Then copy [appsettings.json](../InternetArchive.NET.Tests/appsettings.json) to `
 
 * Set ``emailAddress`` to your archive.org account email address
 * Set ``accessKey`` and ``secretKey`` to your [archive.org keys](https://archive.org/account/s3.php) (or set environment variables)
-* Set ``readOnlyItem`` to a unique identifier. It will be reused across test runs.
+* Set ``testItem`` to a unique identifier. It will be reused across test runs.
 * Optionally set ``canDelete`` to ``true`` if you have admin rights. If not, items will be darked instead of deleted.
 * Optionally fill in ``testList`` and ``testCollection`` if you have them. If not, part of RelationshipTests will be ignored. (This is ok.)
 
@@ -42,10 +42,10 @@ Do not share or post your appsetings.private.json file. (It is already included 
 
 ## Continuous Integration
 
-Running unit tests against a public resource is tricky. New accounts may be flagged for spam. You can only add ten reviews a day. Without admin access, you cannot delete items and clean up after yourself. Testing functionality like "SimpleLists" requires objects that only site admins can create for you.
+Running unit tests against a public resource is tricky. New accounts may be flagged for spam. You can only add ten reviews a day. Without admin access, you cannot delete items and clean up after yourself. Testing functionality like "SimpleLists" requires objects that only archive.org admins can create for you.
 
-So &ndash; create tests, and definitely run them. But trust your instincts if they fail suspiciously. Sometimes "try again tomorrow" is the right approach.
+So &ndash; create tests, and definitely run them. But trust your instincts if they fail suspiciously. Sometimes "try again tomorrow" is the correct approach.
 
-If unrelated tests fail when you submit a pull request, don't worry. We'll verify everything before merging the changes.
+If unrelated tests fail when you submit a pull request, don't worry. We'll verify everything before merging changes.
 
 See [Troubleshooting](./TROUBLESHOOTING.md) for more details.

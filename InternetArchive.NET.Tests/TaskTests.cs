@@ -15,7 +15,7 @@ public class TaskTests
     [TestMethod]
     public async Task GetItemTasksAsync()
     {
-        var request = new Tasks.GetRequest { Identifier = _config.ReadOnlyItem, Catalog = true, History = true};
+        var request = new Tasks.GetRequest { Identifier = _config.TestItem, Catalog = true, History = true};
         var response = await _client.Tasks.GetAsync(request);
 
         Assert.IsNotNull(response);
@@ -36,7 +36,7 @@ public class TaskTests
         Assert.IsNotNull(history.Command);
         Assert.IsNotNull(history.DateSubmitted);
         Assert.IsNotNull(history.Finished);
-        Assert.AreEqual(_config.ReadOnlyItem, history.Identifier);
+        Assert.AreEqual(_config.TestItem, history.Identifier);
         Assert.IsNotNull(history.Priority);
         Assert.IsNotNull(history.Server);
         Assert.IsNotNull(history.Submitter);
@@ -57,26 +57,14 @@ public class TaskTests
     {
         string identifier = await CreateTestItemAsync();
 
-        var response = await _client.Tasks.SubmitAsync(identifier, Tasks.Command.MakeDark, new Dictionary<string, string> { { "comment", "test item - please delete" } });
+        var response = await _client.Tasks.MakeDarkAsync(identifier, "test item - please delete");
         ValidateSubmitResponse(response);
 
         await WaitForServerAsync(identifier);
 
-        try
-        {
-            response = await _client.Tasks.SubmitAsync(identifier, Tasks.Command.MakeUndark);
-            ValidateSubmitResponse(response);
-        }
-        catch (HttpRequestException ex)
-        {
-            if (_config.CanDelete == false)
-            {
-                Console.WriteLine($"Ignoring undark error (StatusCode {ex.StatusCode}) due to lack of config.CanDelete permission");
-            }
-            else
-            {
-                throw;
-            }
-        }
+        response = await _client.Tasks.MakeUndarkAsync(identifier, "test item - please delete");
+        ValidateSubmitResponse(response);
+
+        await WaitForServerAsync(identifier);
     }
 }

@@ -14,6 +14,7 @@ public class Relationships
     public class GetParentsResponse : IDisposable
     {
         public Dictionary<string, SimpleList> Lists { get; set; } = new();
+        public string? Error { get; set; }
 
         private bool disposedValue;
         public void Dispose()
@@ -60,6 +61,7 @@ public class Relationships
     internal class SimpleListResponse : IDisposable
     {
         public Dictionary<string, Dictionary<string, SimpleList>>? Result { get; set; }
+        public string? Error { get; set; }
 
         public void Dispose()
         {
@@ -71,9 +73,9 @@ public class Relationships
 
     public async Task<GetParentsResponse> GetParentsAsync(string identifier)
     {
-        using var simpleListResponse = await _client.GetAsync<SimpleListResponse>(Url(identifier));
+        using var simpleListResponse = await _client.GetAsync<SimpleListResponse>(Url(identifier)).ConfigureAwait(false);
 
-        using var response = new GetParentsResponse();
+        using var response = new GetParentsResponse { Error = simpleListResponse.Error };
         if (simpleListResponse.Result != null) response.Lists = simpleListResponse.Result.Values.Single();
 
         return response;
@@ -110,10 +112,10 @@ public class Relationships
             { "output", "json" },
         };
 
-        if (rows.HasValue) query.Add("rows", rows.Value.ToString());
+        query.Add("rows", rows == null ? "*" : rows.Value.ToString());
         if (page.HasValue) query.Add("page", page.Value.ToString());
 
-        return await _client.GetAsync<GetChildrenResponse>(SearchUrl, query);
+        return await _client.GetAsync<GetChildrenResponse>(SearchUrl, query).ConfigureAwait(false);
     }
 
     private class Patch
@@ -134,7 +136,7 @@ public class Relationships
             Notes = notes
         };
 
-        return await _client.Metadata.WriteAsync(Metadata.Url(identifier), "simplelists", JsonSerializer.Serialize(patch, _jsonSerializerOptions));
+        return await _client.Metadata.WriteAsync(Metadata.Url(identifier), "simplelists", JsonSerializer.Serialize(patch, _jsonSerializerOptions)).ConfigureAwait(false);
     }
 
     public async Task<Metadata.WriteResponse?> RemoveAsync(string identifier, string parentIdentifier, string listName)
@@ -146,6 +148,6 @@ public class Relationships
             List = listName,
         };
 
-        return await _client.Metadata.WriteAsync(Metadata.Url(identifier), "simplelists", JsonSerializer.Serialize(patch, _jsonSerializerOptions));
+        return await _client.Metadata.WriteAsync(Metadata.Url(identifier), "simplelists", JsonSerializer.Serialize(patch, _jsonSerializerOptions)).ConfigureAwait(false);
     }
 }

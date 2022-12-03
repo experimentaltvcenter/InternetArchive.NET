@@ -114,7 +114,7 @@ public class Tasks
         if (request.Catalog == true) query.Add("catalog", "1");
         if (request.History == true) query.Add("history", "1");
 
-        var response = await _client.GetAsync<GetResponse>(Url, query);
+        var response = await _client.GetAsync<GetResponse>(Url, query).ConfigureAwait(false);
         response.EnsureSuccess();
         return response;
     }
@@ -169,6 +169,20 @@ public class Tasks
 
     public async Task<SubmitResponse?> SubmitAsync(string identifier, Command command, Dictionary<string, string>? args = null, int? priority = null)
     {
+        if (args == null)
+        {
+            switch (command)
+            {
+                case Command.MakeDark:
+                case Command.MakeUndark:
+                case Command.Rename:
+                    throw new Exception($"{command} requires additional arguments. See https://archive.org/services/docs/api/tasks.html and/or use a helper method");
+
+                default:
+                    break;
+            }
+        }
+
         var request = new SubmitRequest
         {
             Identifier = identifier,
@@ -177,9 +191,27 @@ public class Tasks
             Priority = priority
         };
 
-        var response = await _client.SendAsync<SubmitResponse>(HttpMethod.Post, Url, request);
+        var response = await _client.SendAsync<SubmitResponse>(HttpMethod.Post, Url, request).ConfigureAwait(false);
         response?.EnsureSuccess();
         return response;
+    }
+
+    // These tasks require additional parameters so we add helper methods to make them more discoverable
+    // https://archive.org/services/docs/api/tasks.html
+
+    public async Task<SubmitResponse?> RenameAsync(string identifier, string newIdentifier, int? priority = null)
+    {
+        return await SubmitAsync(identifier, Command.Rename, new Dictionary<string, string> { { "new_identifier", newIdentifier } }, priority).ConfigureAwait(false);
+    }
+
+    public async Task<SubmitResponse?> MakeDarkAsync(string identifier, string comment, int? priority = null)
+    {
+        return await SubmitAsync(identifier, Command.MakeDark, new Dictionary<string, string> { { "comment", comment } }, priority).ConfigureAwait(false);
+    }
+
+    public async Task<SubmitResponse?> MakeUndarkAsync(string identifier, string comment, int? priority = null)
+    {
+        return await SubmitAsync(identifier, Command.MakeUndark, new Dictionary<string, string> { { "comment", comment } }, priority).ConfigureAwait(false);
     }
 
     public class RateLimitResponse : ServerResponse
@@ -210,7 +242,7 @@ public class Tasks
             { "cmd", command.ToString() }
         };
 
-        var response = await _client.GetAsync<RateLimitResponse>(Url, query);
+        var response = await _client.GetAsync<RateLimitResponse>(Url, query).ConfigureAwait(false);
         response.EnsureSuccess();
         return response;
     }
@@ -229,7 +261,7 @@ public class Tasks
     public async Task<RerunResponse?> RerunAsync(long taskId)
     {
         var request = new RerunRequest { TaskId = taskId };
-        var response = await _client.SendAsync<RerunResponse>(HttpMethod.Put, Url, request);
+        var response = await _client.SendAsync<RerunResponse>(HttpMethod.Put, Url, request).ConfigureAwait(false);
         response?.EnsureSuccess();
         return response;
     }
@@ -260,6 +292,6 @@ public class Tasks
     public async Task<GetLogRequest> GetLogAsync(long taskId)
     {
         var query = new Dictionary<string, string> { { "task_log", $"{taskId}" } };
-        return await _client.GetAsync<GetLogRequest>(LogUrl, query);
+        return await _client.GetAsync<GetLogRequest>(LogUrl, query).ConfigureAwait(false);
     }
 }

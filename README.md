@@ -29,9 +29,10 @@ var response = await archive.Search.ScrapeAsync(new Search.ScrapeRequest
 ## Documentation
 
 - [For library users](./docs/README.md)
-- [For library developers](./docs/DEVELOPERS.md)
+- [For library contributors](./docs/DEVELOPERS.md)
 - [Troubleshooting](./docs/TROUBLESHOOTING.md)
+- [Changelog](./docs/CHANGELOG.md)
 
 ## About Us
 
-[Experimental Television Center Ltd.](https://www.experimentaltvcenter.org) is  a 501(c)(3) non-profit established 1971. Please support our mission to empower artists and open media with a tax-deductible [contribution](https://www.paypal.com/donate/?hosted_button_id=GM2VN43D6RSXJ).
+[Experimental Television Center Ltd.](https://www.experimentaltvcenter.org) is a 501(c)(3) non-profit established 1971. Please support our mission to empower artists and open media with a tax-deductible [contribution](https://www.paypal.com/donate/?hosted_button_id=GM2VN43D6RSXJ).
