@@ -96,9 +96,9 @@ public class Metadata
         }
     }
 
-    public async Task<ReadResponse> ReadAsync(string identifier)
+    public async Task<ReadResponse> ReadAsync(string identifier, CancellationToken cancellationToken = default)
     {
-        return await _client.GetAsync<ReadResponse>(Url(identifier)).ConfigureAwait(false);
+        return await _client.GetAsync<ReadResponse>(Url(identifier), cancellationToken).ConfigureAwait(false);
     }
 
     public class WriteResponse : ServerResponse
@@ -110,7 +110,7 @@ public class Metadata
         public string? Error { get; set; }
     }
 
-    internal async Task<WriteResponse?> WriteAsync(string url, string target, string json)
+    internal async Task<WriteResponse?> WriteAsync(string url, string target, string json, CancellationToken cancellationToken)
     {
         var formData = new List<KeyValuePair<string, string>>
         {
@@ -119,15 +119,15 @@ public class Metadata
         };
 
         var httpContent = new FormUrlEncodedContent(formData);
-        var writeMetadataResponse = await _client.SendAsync<WriteResponse>(HttpMethod.Post, url, httpContent).ConfigureAwait(false);
+        var writeMetadataResponse = await _client.SendAsync<WriteResponse>(HttpMethod.Post, url, httpContent, cancellationToken).ConfigureAwait(false);
 
         writeMetadataResponse?.EnsureSuccess();
         return writeMetadataResponse;
     }
 
-    public async Task<WriteResponse?> WriteAsync(string identifier, JsonPatchDocument patch)
+    public async Task<WriteResponse?> WriteAsync(string identifier, JsonPatchDocument patch, CancellationToken cancellationToken = default)
     {
         var json = JsonSerializer.Serialize(patch.Operations);
-        return await WriteAsync(Url(identifier), "metadata", json).ConfigureAwait(false);
+        return await WriteAsync(Url(identifier), "metadata", json, cancellationToken).ConfigureAwait(false);
     }
 }

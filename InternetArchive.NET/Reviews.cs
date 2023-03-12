@@ -40,9 +40,9 @@ public class Reviews
         }
     }
 
-    public async Task<GetResponse> GetAsync(string identifier)
+    public async Task<GetResponse> GetAsync(string identifier, CancellationToken cancellationToken = default)
     {
-        var response = await _client.GetAsync<GetResponse>(Url(identifier)).ConfigureAwait(false);
+        var response = await _client.GetAsync<GetResponse>(Url(identifier), cancellationToken).ConfigureAwait(false);
         response.EnsureSuccess();
         return response;
     }
@@ -70,11 +70,11 @@ public class Reviews
         public int? Stars { get; set; }
     }
 
-    public async Task<AddOrUpdateResponse?> AddOrUpdateAsync(AddOrUpdateRequest request)
+    public async Task<AddOrUpdateResponse?> AddOrUpdateAsync(AddOrUpdateRequest request, CancellationToken cancellationToken = default)
     {
         if (request.Identifier == null) throw new Exception("identifier required");
 
-        var response = await _client.SendAsync<AddOrUpdateResponse>(HttpMethod.Post, Url(request.Identifier), request).ConfigureAwait(false);
+        var response = await _client.SendAsync<AddOrUpdateResponse>(HttpMethod.Post, Url(request.Identifier), request, cancellationToken).ConfigureAwait(false);
         response?.EnsureSuccess();
         return response;
     }
@@ -90,7 +90,7 @@ public class Reviews
         }
     }
 
-    public async Task<DeleteResponse?> DeleteAsync(string identifier)
+    public async Task<DeleteResponse?> DeleteAsync(string identifier, CancellationToken cancellationToken = default)
     {
         using var httpRequest = new HttpRequestMessage
         {
@@ -98,7 +98,7 @@ public class Reviews
             Method = HttpMethod.Delete
         };
 
-        var response = await _client.SendAsync<DeleteResponse>(httpRequest).ConfigureAwait(false);
+        var response = await _client.SendAsync<DeleteResponse>(httpRequest, cancellationToken).ConfigureAwait(false);
         response?.EnsureSuccess();
         return response;
     }

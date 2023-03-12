@@ -71,9 +71,9 @@ public class Relationships
         }
     }
 
-    public async Task<GetParentsResponse> GetParentsAsync(string identifier)
+    public async Task<GetParentsResponse> GetParentsAsync(string identifier, CancellationToken cancellationToken = default)
     {
-        using var simpleListResponse = await _client.GetAsync<SimpleListResponse>(Url(identifier)).ConfigureAwait(false);
+        using var simpleListResponse = await _client.GetAsync<SimpleListResponse>(Url(identifier), cancellationToken).ConfigureAwait(false);
 
         using var response = new GetParentsResponse { Error = simpleListResponse.Error };
         if (simpleListResponse.Result != null) response.Lists = simpleListResponse.Result.Values.Single();
@@ -103,7 +103,7 @@ public class Relationships
         }
     }
 
-    public async Task<GetChildrenResponse> GetChildrenAsync(string identifier, string? listname = null, int? rows = null, int? page = null)
+    public async Task<GetChildrenResponse> GetChildrenAsync(string identifier, string? listname = null, int? rows = null, int? page = null, CancellationToken cancellationToken = default)
     {
         var query = new Dictionary<string, string>
         {
@@ -115,7 +115,7 @@ public class Relationships
         query.Add("rows", rows == null ? "*" : rows.Value.ToString());
         if (page.HasValue) query.Add("page", page.Value.ToString());
 
-        return await _client.GetAsync<GetChildrenResponse>(SearchUrl, query).ConfigureAwait(false);
+        return await _client.GetAsync<GetChildrenResponse>(SearchUrl, query, cancellationToken).ConfigureAwait(false);
     }
 
     private class Patch
@@ -126,7 +126,7 @@ public class Relationships
         public string? Notes { get; set; }
     }
 
-    public async Task<Metadata.WriteResponse?> AddAsync(string identifier, string parentIdentifier, string listName, string? notes = null)
+    public async Task<Metadata.WriteResponse?> AddAsync(string identifier, string parentIdentifier, string listName, string? notes = null, CancellationToken cancellationToken = default)
     {
         var patch = new Patch
         {
@@ -136,10 +136,10 @@ public class Relationships
             Notes = notes
         };
 
-        return await _client.Metadata.WriteAsync(Metadata.Url(identifier), "simplelists", JsonSerializer.Serialize(patch, _jsonSerializerOptions)).ConfigureAwait(false);
+        return await _client.Metadata.WriteAsync(Metadata.Url(identifier), "simplelists", JsonSerializer.Serialize(patch, _jsonSerializerOptions), cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<Metadata.WriteResponse?> RemoveAsync(string identifier, string parentIdentifier, string listName)
+    public async Task<Metadata.WriteResponse?> RemoveAsync(string identifier, string parentIdentifier, string listName, CancellationToken cancellationToken = default)
     {
         var patch = new Patch
         {
@@ -148,6 +148,6 @@ public class Relationships
             List = listName,
         };
 
-        return await _client.Metadata.WriteAsync(Metadata.Url(identifier), "simplelists", JsonSerializer.Serialize(patch, _jsonSerializerOptions)).ConfigureAwait(false);
+        return await _client.Metadata.WriteAsync(Metadata.Url(identifier), "simplelists", JsonSerializer.Serialize(patch, _jsonSerializerOptions), cancellationToken).ConfigureAwait(false);
     }
 }

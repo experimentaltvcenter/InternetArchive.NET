@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Polly;
 using Polly.Registry;
-using System.Net;
 
 namespace InternetArchive;
 

@@ -2,7 +2,9 @@
 global using Microsoft.AspNetCore.WebUtilities;
 global using Microsoft.Extensions.Logging;
 global using System.Collections.Concurrent;
+global using System.Globalization;
 global using System.Security.Cryptography;
+global using System.Net;
 global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
@@ -29,7 +31,7 @@ public class Client
     public Client(ILogger? logger = null, ILoggerFactory? loggerFactory = null, HttpClient? httpClient = null, IHttpClientFactory? httpClientFactory = null)
     {
         _logger = logger ?? loggerFactory?.CreateLogger(Name) ?? NullLogger.Instance;
-        HttpClient =  httpClientFactory?.CreateClient(Name) ?? httpClient ?? throw new Exception("Must pass an HttpClient or an HttpClientFactory");
+        HttpClient =  httpClientFactory?.CreateClient(Name) ?? httpClient ?? throw new InternetArchiveException("Must pass an HttpClient or an HttpClientFactory");
 
         _jsonSerializerOptions ??= new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -53,7 +55,7 @@ public class Client
         }
 
         string? version = Assembly.GetExecutingAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        if (version == null) throw new Exception("Unable to get version");
+        if (version == null) throw new InternetArchiveException("Unable to get version");
 
         var productValue = new ProductInfoHeaderValue(Name, version);
         var commentValue = new ProductInfoHeaderValue("(+https://github.com/experimentaltvcenter/InternetArchive.NET)");
@@ -98,7 +100,7 @@ public class Client
         return client;
     }
 
-    public static async Task<Client> CreateAsync(string? emailAddress = null, string? password = null, bool readOnly = false, bool dryRun = false)
+    public static async Task<Client> CreateAsync(string? emailAddress = null, string? password = null, bool readOnly = false, bool dryRun = false, CancellationToken cancellationToken = default)
     {
         var client = GetClient(readOnly, dryRun);
 
@@ -127,7 +129,7 @@ public class Client
                     Console.WriteLine($"{message}: {emailAddress}");
                 }
 
-                if (string.IsNullOrWhiteSpace(emailAddress)) throw new Exception("Email address required");
+                if (string.IsNullOrWhiteSpace(emailAddress)) throw new InternetArchiveException("Email address required");
 
                 password ??= ReadPasswordFromConsole("Password: ");
             }
@@ -135,7 +137,8 @@ public class Client
 
         if (!readOnly)
         {
-            await client.LoginAsync(emailAddress!, password!, readOnly).ConfigureAwait(false);
+            await client.LoginAsync(emailAddress!, password!, readOnly, cancellationToken).ConfigureAwait(false);
+            Console.WriteLine();
         }
 
         client.InitHttpClient();
@@ -157,7 +160,12 @@ public class Client
         HttpClient.DefaultRequestHeaders.Add("x-archive-interactive-priority", "1");
     }
 
-    internal async Task<Response> GetAsync<Response>(string url, Dictionary<string, string>? query = null)
+    internal async Task<Response> GetAsync<Response>(string url, CancellationToken cancellationToken)
+    {
+        return await GetAsync<Response>(url, null, cancellationToken).ConfigureAwait(false);
+    }
+
+    internal async Task<Response> GetAsync<Response>(string url, Dictionary<string, string>? query, CancellationToken cancellationToken)
     {
         if (query != null) url = QueryHelpers.AddQueryString(url, query);
 
@@ -167,16 +175,15 @@ public class Client
             RequestUri = new Uri(url)
         };
 
-        var response = await SendAsync<Response>(httpRequest).ConfigureAwait(false);
-        if (response == null) throw new Exception("null response from server");
+        var response = await SendAsync<Response>(httpRequest, cancellationToken).ConfigureAwait(false);
+        if (response == null) throw new InternetArchiveException("null response from server");
         return response;
     }
 
     internal static HashSet<HttpMethod> _readOnlyMethods = new() { HttpMethod.Head, HttpMethod.Get };   
-    internal async Task<Response?> SendAsync<Response>(HttpRequestMessage request)
+    internal async Task<Response?> SendAsync<Response>(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Log(request);
-        if (request.RequestUri?.Scheme == "http" && ReadOnly == false) throw new Exception("Insecure call");
 
         if (ReadOnly && !_readOnlyMethods.Contains(request.Method))
         {
@@ -187,20 +194,24 @@ public class Client
             }
             else
             {
-                throw new InvalidOperationException("Cannot call this function when the client is configured in read-only mode");
+                throw new InternetArchiveException("Cannot call this function when the client is configured in read-only mode");
             }
         }
 
-        var httpResponse = await HttpClient.SendAsync(request).ConfigureAwait(false);
-        Log(httpResponse);
-        httpResponse.EnsureSuccessStatusCode();
+        var httpResponse = await HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        Log(httpResponse, cancellationToken);
+
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            throw new InternetArchiveRequestException(httpResponse);
+        }
 
         if (typeof(Response) == typeof(HttpResponseMessage))
         {
             return (Response)(object)httpResponse;
         }
 
-        var responseString = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var responseString = await httpResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
         if (typeof(Response) == typeof(string))
         {
@@ -219,7 +230,7 @@ public class Client
         }
     }
 
-    internal async Task<Response?> SendAsync<Response>(HttpMethod httpMethod, string url, object content)
+    internal async Task<Response?> SendAsync<Response>(HttpMethod httpMethod, string url, object content, CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(content, _jsonSerializerOptions);
         var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
@@ -231,10 +242,10 @@ public class Client
             Content = stringContent
         };
 
-        return await SendAsync<Response>(httpRequest).ConfigureAwait(false);
+        return await SendAsync<Response>(httpRequest, cancellationToken).ConfigureAwait(false);
     }
 
-    internal async Task<Response?> SendAsync<Response>(HttpMethod httpMethod, string url, HttpContent content)
+    internal async Task<Response?> SendAsync<Response>(HttpMethod httpMethod, string url, HttpContent content, CancellationToken cancellationToken)
     {
         using var httpRequest = new HttpRequestMessage
         {
@@ -243,7 +254,7 @@ public class Client
             Content = content
         };
 
-        return await SendAsync<Response>(httpRequest).ConfigureAwait(false);
+        return await SendAsync<Response>(httpRequest, cancellationToken).ConfigureAwait(false);
     }
 
     private void Log(HttpRequestMessage request)
@@ -268,9 +279,9 @@ public class Client
         }
     }
 
-    private HttpResponseMessage Log(HttpResponseMessage response)
+    private HttpResponseMessage Log(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        var logLevel = LogLevel.Information;
+        var logLevel = response.IsSuccessStatusCode ? LogLevel.Information : LogLevel.Error;
         if (_logger.IsEnabled(logLevel))
         {
             if (response.Headers.Any())
@@ -287,7 +298,8 @@ public class Client
                 }
             }
 
-            string body = response.Content.ReadAsStringAsync().Result;
+            string body = response.Content.ReadAsStringAsync(cancellationToken).Result;
+
             _logger.Log(logLevel, "Response body: {body}", body);
             _logger.Log(response.IsSuccessStatusCode ? logLevel : LogLevel.Error, "Result: {StatusCode} {ReasonPhrase}", (int)response.StatusCode, response.ReasonPhrase);
         }
@@ -334,7 +346,7 @@ public class Client
         }
     }
 
-    private async Task LoginAsync(string emailAddress, string password, bool readOnly)
+    private async Task LoginAsync(string emailAddress, string password, bool readOnly, CancellationToken cancellationToken)
     {
         string url = "https://archive.org/services/xauthn/?op=login";
 
@@ -347,17 +359,17 @@ public class Client
         var httpContent = new FormUrlEncodedContent(formData);
 
         _logger.LogInformation("Logging in...");
-        var httpResponse = await HttpClient.PostAsync(url, httpContent).ConfigureAwait(false);
-        Log(httpResponse);
+        var httpResponse = await HttpClient.PostAsync(url, httpContent, cancellationToken).ConfigureAwait(false);
+        Log(httpResponse, cancellationToken);
 
-        if (httpResponse == null) throw new NullReferenceException("httpResponse");
+        if (httpResponse == null) throw new InternetArchiveException("null httpResponse");
 
-        var json = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var json = await httpResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var loginResponse = JsonSerializer.Deserialize<LoginResponse>(json, _jsonSerializerOptions);
 
         if (httpResponse.IsSuccessStatusCode)
         {
-            if (loginResponse == null || loginResponse.Values == null || loginResponse.Values.S3 == null) throw new NullReferenceException("loginResponse");
+            if (loginResponse == null || loginResponse.Values == null || loginResponse.Values.S3 == null) throw new InternetArchiveException("loginResponse");
             loginResponse.EnsureSuccess();
 
             if (readOnly == false)
@@ -366,12 +378,14 @@ public class Client
                 SecretKey = loginResponse.Values.S3.SecretKey;
             }
         }
-        else if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        else if (httpResponse.StatusCode == HttpStatusCode.Unauthorized)
         {
-            throw new Exception($"Login failed: {loginResponse?.Values?.Reason}");
+            throw new InternetArchiveException($"Login failed: {loginResponse?.Values?.Reason}");
         }
-
-        httpResponse.EnsureSuccessStatusCode();
+        else
+        {
+            throw new InternetArchiveRequestException(httpResponse);
+        }
     }
 
     private static string ReadPasswordFromConsole(string prompt)
@@ -401,4 +415,14 @@ public class Client
 
         return password;
     }
+}
+
+internal static class ExtensionMethods
+{
+#if NETSTANDARD
+    public static async Task<string> ReadAsStringAsync(this HttpContent content, CancellationToken cancellationToken)
+    {
+        return await content.ReadAsStringAsync();
+    }
+#endif
 }

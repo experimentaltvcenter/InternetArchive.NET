@@ -138,7 +138,7 @@ public class Search
         public int? Year { get; set; }
     }
 
-    internal Dictionary<string, string> ScrapeHelper(ScrapeRequest request)
+    internal Dictionary<string, string> ScrapeHelper(ScrapeRequest request, CancellationToken cancellationToken = default)
     {
         var query = new Dictionary<string, string>();
 
@@ -158,15 +158,15 @@ public class Search
         return query;
     }
 
-    public async Task<ScrapeResponse> ScrapeAsync(ScrapeRequest request)
+    public async Task<ScrapeResponse> ScrapeAsync(ScrapeRequest request, CancellationToken cancellationToken = default)
     {
         var query = ScrapeHelper(request);
-        return await _client.GetAsync<ScrapeResponse>(Url, query).ConfigureAwait(false);
+        return await _client.GetAsync<ScrapeResponse>(Url, query, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<JsonDocument> ScrapeAsJsonAsync(ScrapeRequest request)
+    public async Task<JsonDocument> ScrapeAsJsonAsync(ScrapeRequest request, CancellationToken cancellationToken = default)
     {
         var query = ScrapeHelper(request);
-        return await _client.GetAsync<JsonDocument>(Url, query).ConfigureAwait(false);
+        return await _client.GetAsync<JsonDocument>(Url, query, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -1,6 +1,4 @@
-﻿using System.Globalization;
-
-namespace InternetArchive;
+﻿namespace InternetArchive;
 
 public class DateTimeOffsetNullableConverter : JsonConverter<DateTimeOffset?>
 {
@@ -93,12 +91,10 @@ public class UnixEpochDateTimeNullableConverter: JsonConverter<DateTimeOffset?>
     }
 }
 
-public class NullableStringToIntConverter : JsonConverter<int?>
+public class NullableHttpStatusCodeConverter : JsonConverter<HttpStatusCode?>
 {
-    public override int? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override HttpStatusCode? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        var list = new List<string>();
-
         if (reader.TokenType == JsonTokenType.Null)
         {
             return null;
@@ -107,11 +103,11 @@ public class NullableStringToIntConverter : JsonConverter<int?>
         {
             var s = reader.GetString();
             if (s == null) return null;
-            return int.Parse(s);
+            return (HttpStatusCode)int.Parse(s);
         }
         else if (reader.TokenType == JsonTokenType.Number)
         {
-            return reader.GetInt32();
+            return (HttpStatusCode)reader.GetInt32();
         }
         else
         {
@@ -119,14 +115,15 @@ public class NullableStringToIntConverter : JsonConverter<int?>
         }
     }
 
-    public override void Write(Utf8JsonWriter writer, int? i, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer, HttpStatusCode? httpStatusCode, JsonSerializerOptions options)
     {
-        if (i == null)
+        if (httpStatusCode == null)
         {
             writer.WriteNullValue();
         }
         else
         {
+            int i = (int)httpStatusCode;
             writer.WriteStringValue(i.ToString());
         }
     }

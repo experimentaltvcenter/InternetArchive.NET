@@ -15,7 +15,9 @@ public class TaskTests
     [TestMethod]
     public async Task GetItemTasksAsync()
     {
-        var request = new Tasks.GetRequest { Identifier = _config.TestItem, Catalog = true, History = true};
+        string identifier = await GetSharedTestIdentifierAsync();
+
+        var request = new Tasks.GetRequest { Identifier = identifier, Catalog = true, History = true};
         var response = await _client.Tasks.GetAsync(request);
 
         Assert.IsNotNull(response);
@@ -36,7 +38,7 @@ public class TaskTests
         Assert.IsNotNull(history.Command);
         Assert.IsNotNull(history.DateSubmitted);
         Assert.IsNotNull(history.Finished);
-        Assert.AreEqual(_config.TestItem, history.Identifier);
+        Assert.AreEqual(identifier, history.Identifier);
         Assert.IsNotNull(history.Priority);
         Assert.IsNotNull(history.Server);
         Assert.IsNotNull(history.Submitter);
@@ -60,11 +62,7 @@ public class TaskTests
         var response = await _client.Tasks.MakeDarkAsync(identifier, "test item - please delete");
         ValidateSubmitResponse(response);
 
-        await WaitForServerAsync(identifier);
-
         response = await _client.Tasks.MakeUndarkAsync(identifier, "test item - please delete");
         ValidateSubmitResponse(response);
-
-        await WaitForServerAsync(identifier);
     }
 }

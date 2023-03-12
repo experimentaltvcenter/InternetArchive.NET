@@ -18,7 +18,7 @@ public class ViewTests
     }
 
     [TestMethod]
-    public async Task GetItemSummary()
+    public async Task GetItemSummaryAsync()
     {
         var view = await _client.Views.GetItemSummaryAsync(_item);
         ValidateSummary(view);

@@ -3,10 +3,18 @@ namespace InternetArchiveTests;
 [TestClass]
 public class MetadataTests
 {
+    protected static string _testItem = null!;
+
+    [ClassInitialize()]
+    public static async Task ClassInit(TestContext _)
+    {
+        _testItem = await CreateTestItemAsync();
+    }
+
     [TestMethod]
     public async Task ReadMetadataAsync()
     {
-        using var response = await _client.Metadata.ReadAsync(_config.TestItem);
+        using var response = await _client.Metadata.ReadAsync(_testItem);
         
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.DataNodePrimary);
@@ -44,7 +52,7 @@ public class MetadataTests
     [TestMethod]
     public async Task WriteMetadataAsync()
     {
-        using var readResponse1 = await _client.Metadata.ReadAsync(_config.TestItem);
+        using var readResponse1 = await _client.Metadata.ReadAsync(_testItem);
 
         var patch = new JsonPatchDocument();
         string value;
@@ -60,7 +68,7 @@ public class MetadataTests
             patch.Add("/testkey", value);
         }
 
-        var writeResponse = await _client.Metadata.WriteAsync(_config.TestItem, patch);
+        var writeResponse = await _client.Metadata.WriteAsync(_testItem, patch);
         
         Assert.IsNotNull(writeResponse);
         Assert.IsTrue(writeResponse.Success);
@@ -68,7 +76,7 @@ public class MetadataTests
         Assert.IsNotNull(writeResponse.Log);
         Assert.IsNotNull(writeResponse.TaskId);
 
-        using var readResponse2 = await _client.Metadata.ReadAsync(_config.TestItem);
+        using var readResponse2 = await _client.Metadata.ReadAsync(_testItem);
         Assert.AreEqual(value, readResponse2?.Metadata?.RootElement.GetProperty("testkey").GetString());
     }
 }

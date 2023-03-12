@@ -83,7 +83,7 @@ public class Tasks
         public int? Limit { get; set; }
     }
 
-    public async Task<GetResponse> GetAsync(GetRequest request)
+    public async Task<GetResponse> GetAsync(GetRequest request, CancellationToken cancellationToken = default)
     {
         var query = new Dictionary<string, string>();
 
@@ -114,7 +114,7 @@ public class Tasks
         if (request.Catalog == true) query.Add("catalog", "1");
         if (request.History == true) query.Add("history", "1");
 
-        var response = await _client.GetAsync<GetResponse>(Url, query).ConfigureAwait(false);
+        var response = await _client.GetAsync<GetResponse>(Url, query, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccess();
         return response;
     }
@@ -167,7 +167,7 @@ public class Tasks
         { Command.Rename, "rename.php" }
     };
 
-    public async Task<SubmitResponse?> SubmitAsync(string identifier, Command command, Dictionary<string, string>? args = null, int? priority = null)
+    public async Task<SubmitResponse?> SubmitAsync(string identifier, Command command, Dictionary<string, string>? args = null, int? priority = null, CancellationToken cancellationToken = default)
     {
         if (args == null)
         {
@@ -191,7 +191,7 @@ public class Tasks
             Priority = priority
         };
 
-        var response = await _client.SendAsync<SubmitResponse>(HttpMethod.Post, Url, request).ConfigureAwait(false);
+        var response = await _client.SendAsync<SubmitResponse>(HttpMethod.Post, Url, request, cancellationToken).ConfigureAwait(false);
         response?.EnsureSuccess();
         return response;
     }
@@ -199,19 +199,19 @@ public class Tasks
     // These tasks require additional parameters so we add helper methods to make them more discoverable
     // https://archive.org/services/docs/api/tasks.html
 
-    public async Task<SubmitResponse?> RenameAsync(string identifier, string newIdentifier, int? priority = null)
+    public async Task<SubmitResponse?> RenameAsync(string identifier, string newIdentifier, int? priority = null, CancellationToken cancellationToken = default)
     {
-        return await SubmitAsync(identifier, Command.Rename, new Dictionary<string, string> { { "new_identifier", newIdentifier } }, priority).ConfigureAwait(false);
+        return await SubmitAsync(identifier, Command.Rename, new Dictionary<string, string> { { "new_identifier", newIdentifier } }, priority, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<SubmitResponse?> MakeDarkAsync(string identifier, string comment, int? priority = null)
+    public async Task<SubmitResponse?> MakeDarkAsync(string identifier, string comment, int? priority = null, CancellationToken cancellationToken = default)
     {
-        return await SubmitAsync(identifier, Command.MakeDark, new Dictionary<string, string> { { "comment", comment } }, priority).ConfigureAwait(false);
+        return await SubmitAsync(identifier, Command.MakeDark, new Dictionary<string, string> { { "comment", comment } }, priority, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<SubmitResponse?> MakeUndarkAsync(string identifier, string comment, int? priority = null)
+    public async Task<SubmitResponse?> MakeUndarkAsync(string identifier, string comment, int? priority = null, CancellationToken cancellationToken = default)
     {
-        return await SubmitAsync(identifier, Command.MakeUndark, new Dictionary<string, string> { { "comment", comment } }, priority).ConfigureAwait(false);
+        return await SubmitAsync(identifier, Command.MakeUndark, new Dictionary<string, string> { { "comment", comment } }, priority, cancellationToken).ConfigureAwait(false);
     }
 
     public class RateLimitResponse : ServerResponse
@@ -234,7 +234,7 @@ public class Tasks
         }
     }
 
-    public async Task<RateLimitResponse> GetRateLimitAsync(Command command)
+    public async Task<RateLimitResponse> GetRateLimitAsync(Command command, CancellationToken cancellationToken = default)
     {
         var query = new Dictionary<string, string>
         {
@@ -242,7 +242,7 @@ public class Tasks
             { "cmd", command.ToString() }
         };
 
-        var response = await _client.GetAsync<RateLimitResponse>(Url, query).ConfigureAwait(false);
+        var response = await _client.GetAsync<RateLimitResponse>(Url, query, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccess();
         return response;
     }
@@ -258,10 +258,10 @@ public class Tasks
         public Dictionary<string, object?> Value { get; set; } = new();
     }
 
-    public async Task<RerunResponse?> RerunAsync(long taskId)
+    public async Task<RerunResponse?> RerunAsync(long taskId, CancellationToken cancellationToken = default)
     {
         var request = new RerunRequest { TaskId = taskId };
-        var response = await _client.SendAsync<RerunResponse>(HttpMethod.Put, Url, request).ConfigureAwait(false);
+        var response = await _client.SendAsync<RerunResponse>(HttpMethod.Put, Url, request, cancellationToken).ConfigureAwait(false);
         response?.EnsureSuccess();
         return response;
     }
@@ -289,9 +289,9 @@ public class Tasks
         public int Priority { get; set; } = 0;
     }
 
-    public async Task<GetLogRequest> GetLogAsync(long taskId)
+    public async Task<GetLogRequest> GetLogAsync(long taskId, CancellationToken cancellationToken = default)
     {
         var query = new Dictionary<string, string> { { "task_log", $"{taskId}" } };
-        return await _client.GetAsync<GetLogRequest>(LogUrl, query).ConfigureAwait(false);
+        return await _client.GetAsync<GetLogRequest>(LogUrl, query, cancellationToken).ConfigureAwait(false);
     }
 }

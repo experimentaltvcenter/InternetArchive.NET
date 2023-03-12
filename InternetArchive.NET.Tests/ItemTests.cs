@@ -1,11 +1,14 @@
+using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace InternetArchiveTests;
 
 [TestClass]
 public class ItemTests
 {
-    private static string _largeTextPath = null!;
+    private static string _largeFilePath = null!;
+    private static readonly string _largeFileRemoteName = "large.txt";
 
     [ClassInitialize()]
     public static void ClassInit(TestContext _)
@@ -19,19 +22,21 @@ public class ItemTests
             s[i] = chars[random.Next(chars.Length)];
         }
 
-        _largeTextPath = Path.Combine(Path.GetTempPath(), "large.txt");
-        using var stream = File.Create(_largeTextPath);
+        _largeFilePath = Path.Combine(Path.GetTempPath(), _largeFileRemoteName);
+        using var stream = File.Create(_largeFilePath);
         stream.Write(s, 0, s.Length);
     }
 
     [TestMethod]
     public async Task GetUseLimitAsync()
     {
-        var response = await _client.Item.GetUseLimitAsync(_config.TestItem);
+        string identifer = await GetSharedTestIdentifierAsync();
+
+        var response = await _client.Item.GetUseLimitAsync(identifer);
 
         Assert.IsNotNull(response);
 
-        Assert.AreEqual(_config.TestItem, response.Bucket);
+        Assert.AreEqual(identifer, response.Bucket);
         Assert.AreEqual(0, response.OverLimit);
 
         Assert.IsNotNull(response.Detail);
@@ -59,7 +64,7 @@ public class ItemTests
     {
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Metadata);
-        Assert.IsFalse(response.Metadata.RootElement.TryGetProperty(key, out var element));
+        Assert.IsFalse(response.Metadata.RootElement.TryGetProperty(key, out var _));
     }
 
     [TestMethod]
@@ -74,8 +79,6 @@ public class ItemTests
         };
 
         var identifier = await CreateTestItemAsync(extraMetadata: extraMetadata);
-
-        await WaitForServerAsync(identifier);
 
         // verify metadata
 
@@ -158,6 +161,34 @@ public class ItemTests
         }
     }
 
+    [TestMethod]
+    public async Task CreateAddStreamAsync()
+    {
+        const string _remoteFilename2 = "hello; again #2.txt";
+
+        var identifier = await CreateTestItemAsync();
+
+        // add another file via stream
+
+        var putRequest = new Item.PutRequest
+        {
+            Bucket = identifier,
+            SourceStream = File.OpenRead(_config.LocalFilename),
+            RemoteFilename = _remoteFilename2,
+            NoDerive = true
+        };
+
+        await _client.Item.PutAsync(putRequest);
+        await WaitForServerAsync(identifier);
+
+        putRequest.SourceStream = File.OpenRead(_config.LocalFilename);
+        await VerifyHashesAsync(putRequest);
+
+        using var response = await _client.Metadata.ReadAsync(identifier);
+        Assert.IsNotNull(response?.Files.Where(x => x.Name == _config.RemoteFilename).SingleOrDefault());
+        Assert.IsNotNull(response?.Files.Where(x => x.Name == _remoteFilename2).SingleOrDefault());
+    }
+
     private static Item.PutRequest CreateMultipartRequest(string identifier, bool createBucket = true)
     {
         var metadata = new List<KeyValuePair<string, object?>>
@@ -170,7 +201,7 @@ public class ItemTests
         return new Item.PutRequest
         {
             Bucket = identifier,
-            LocalPath = _largeTextPath,
+            LocalPath = _largeFilePath,
             Metadata = metadata,
             CreateBucket = createBucket,
             NoDerive = true,
@@ -180,57 +211,68 @@ public class ItemTests
     }
 
     [TestMethod]
-    public async Task AbortUpload()
+    public async Task UploadMultipartCancelAsync()
     {
-        string identifier = _config.TestItem;
+        string identifier = GenerateIdentifier();
         var putRequest = CreateMultipartRequest(identifier);
 
-        await _client.Item.AbortUploadAsync(putRequest);
-        await WaitForServerAsync(identifier);
+        var source = new CancellationTokenSource(3000);
+
+        try
+        {
+            await _client.Item.PutAsync(putRequest, source.Token);
+            Assert.Fail("CancellationToken ignored");
+        }
+        catch (Exception ex)
+        {
+            Assert.IsInstanceOfType(ex, typeof(TaskCanceledException));
+        }
     }
 
     [TestMethod]
-    public async Task AbortAllBucketUploads()
+    public async Task UploadMultipartAbortImmediatelyAsync()
     {
-        string identifier = _config.TestItem;
-
+        string identifier = await GetSharedTestIdentifierAsync();
         await _client.Item.AbortUploadAsync(identifier);
-        await WaitForServerAsync(identifier);
     }
 
     [TestMethod]
-    public async Task StartThenAbortUpload()
+    public async Task UploadMultipartAbortAsync()
     {
-        string identifier = $"etc-tmp-{Guid.NewGuid():N}";
+        string identifier = GenerateIdentifier();
         var putRequest = CreateMultipartRequest(identifier);
-
-        putRequest.MultipartUploadSkipParts = new[] { 1, 2 };
-
         await _client.Item.PutAsync(putRequest);
-        await WaitForServerAsync(identifier);
 
+        await Task.Delay(TimeSpan.FromSeconds(20));
         await _client.Item.AbortUploadAsync(putRequest);
     }
 
     [TestMethod]
-    public async Task UploadMultipart()
+    public async Task UploadMultipartAsync()
     {
-        string identifier = $"etc-tmp-{Guid.NewGuid():N}";
-        await _client.Item.PutAsync(CreateMultipartRequest(identifier));
+        string identifier = GenerateIdentifier();
+
+        var putRequest = CreateMultipartRequest(identifier);
+        await _client.Item.PutAsync(putRequest);
+
+        await WaitForServerAsync(identifier);
+        await VerifyHashesAsync(putRequest);
     }
 
     [TestMethod]
-    public async Task UploadMultipartExistingWithContinue()
+    public async Task UploadMultipartWithContinueAsync()
     {
-        string identifier = _config.TestItem;
-        var putRequest = CreateMultipartRequest(identifier, createBucket: false);
+        string identifier = GenerateIdentifier();
+
+        var putRequest = CreateMultipartRequest(identifier);
         putRequest.MultipartUploadSkipParts = new[] { 1, 2 };
 
         await _client.Item.PutAsync(putRequest);
 
-        putRequest.MultipartUploadSkipParts = new List<int>();
+        putRequest = CreateMultipartRequest(identifier, createBucket: false);
         await _client.Item.PutAsync(putRequest);
 
         await WaitForServerAsync(identifier);
+        await VerifyHashesAsync(putRequest);
     }
 }

@@ -53,17 +53,17 @@ public class Views
         public long? SumPerDay { get; set; }
     }
 
-    public async Task<Summary> GetItemSummaryAsync(string identifier, bool legacy = false)
+    public async Task<Summary> GetItemSummaryAsync(string identifier, bool legacy = false, CancellationToken cancellationToken = default)
     {
-        var summaries = await GetItemSummaryAsync(new[] { identifier }, legacy).ConfigureAwait(false);
+        var summaries = await GetItemSummaryAsync(new[] { identifier }, legacy, cancellationToken).ConfigureAwait(false);
         if (summaries.Count == 0) throw new Exception("identifier not found");
         return summaries.First().Value;
     }
 
-    public async Task<Dictionary<string, Summary>> GetItemSummaryAsync(IEnumerable<string> identifiers, bool legacy = false)
+    public async Task<Dictionary<string, Summary>> GetItemSummaryAsync(IEnumerable<string> identifiers, bool legacy = false, CancellationToken cancellationToken = default)
     {
         string api = legacy ? "legacy_counts" : "short";
-        return await _client.GetAsync<Dictionary<string, Summary>>($"{Url}/{api}/{string.Join(",", identifiers)}").ConfigureAwait(false);
+        return await _client.GetAsync<Dictionary<string, Summary>>($"{Url}/{api}/{string.Join(",", identifiers)}", cancellationToken).ConfigureAwait(false);
     }
 
     public class SummaryPerDay<T>
@@ -72,14 +72,14 @@ public class Views
         public Dictionary<string, Summary> Ids { get; set; } = new();
     }
 
-    public async Task<SummaryPerDay<T>> GetItemSummaryPerDayAsync<T>(string identifier)
+    public async Task<SummaryPerDay<T>> GetItemSummaryPerDayAsync<T>(string identifier, CancellationToken cancellationToken = default)
     {
-        return await GetItemSummaryPerDayAsync<T>(new[] { identifier }).ConfigureAwait(false);
+        return await GetItemSummaryPerDayAsync<T>(new[] { identifier }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<SummaryPerDay<T>> GetItemSummaryPerDayAsync<T>(IEnumerable<string> identifiers)
+    public async Task<SummaryPerDay<T>> GetItemSummaryPerDayAsync<T>(IEnumerable<string> identifiers, CancellationToken cancellationToken = default)
     {
-        return await _client.GetAsync<SummaryPerDay<T>>($"{Url}/long/{string.Join(",", identifiers)}").ConfigureAwait(false);
+        return await _client.GetAsync<SummaryPerDay<T>>($"{Url}/long/{string.Join(",", identifiers)}", cancellationToken).ConfigureAwait(false);
     }
 
     public class Details<T>
@@ -128,19 +128,19 @@ public class Views
         }
     }
 
-    public async Task<Details<T>> GetItemDetailsAsync<T>(string identifier, T startDate, T endDate)
+    public async Task<Details<T>> GetItemDetailsAsync<T>(string identifier, T startDate, T endDate, CancellationToken cancellationToken = default)
     {
-        return await _client.GetAsync<Details<T>>(DetailsUrl("item", identifier, startDate, endDate)).ConfigureAwait(false);
+        return await _client.GetAsync<Details<T>>(DetailsUrl("item", identifier, startDate, endDate), cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<Details<T>> GetCollectionDetailsAsync<T>(string collection, T startDate, T endDate)
+    public async Task<Details<T>> GetCollectionDetailsAsync<T>(string collection, T startDate, T endDate, CancellationToken cancellationToken = default)
     {
-        return await _client.GetAsync<Details<T>>(DetailsUrl("collection", collection, startDate, endDate)).ConfigureAwait(false);
+        return await _client.GetAsync<Details<T>>(DetailsUrl("collection", collection, startDate, endDate), cancellationToken).ConfigureAwait(false);
     }
 
     // documented but not currently implemented at archive.org
-    internal async Task<Details<T>> GetContributorDetailsAsync<T>(string contributor, T startDate, T endDate)
+    internal async Task<Details<T>> GetContributorDetailsAsync<T>(string contributor, T startDate, T endDate, CancellationToken cancellationToken = default)
     {
-        return await _client.GetAsync<Details<T>>(DetailsUrl("contributor", contributor, startDate, endDate)).ConfigureAwait(false);
+        return await _client.GetAsync<Details<T>>(DetailsUrl("contributor", contributor, startDate, endDate), cancellationToken).ConfigureAwait(false);
     }
 }

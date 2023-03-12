@@ -6,7 +6,7 @@ public class ReviewTests
     [TestMethod]
     public async Task ReadUpdateDeleteAsync()
     {
-        string identifier = _config.TestItem;
+        string identifier = await GetSharedTestIdentifierAsync();
 
         try
         {
@@ -17,7 +17,7 @@ public class ReviewTests
             await _client.Reviews.DeleteAsync(identifier);
             await WaitForServerAsync(identifier);
         }
-        catch (HttpRequestException ex)
+        catch (InternetArchiveRequestException ex)
         {
             Assert.AreEqual(HttpStatusCode.NotFound, ex.StatusCode);
         }
@@ -57,7 +57,7 @@ public class ReviewTests
             addResponse = await _client.Reviews.AddOrUpdateAsync(addRequest);
             Assert.Fail("Sending same review should not succeed");
         }
-        catch (ServerResponseException)
+        catch (InternetArchiveResponseException)
         {
             // ok
         }
@@ -94,7 +94,7 @@ public class ReviewTests
             var ignore = await _client.Reviews.GetAsync(identifier);
             Assert.Fail("Failed to delete");
         }
-        catch (HttpRequestException ex)
+        catch (InternetArchiveRequestException ex)
         {
             Assert.AreEqual(HttpStatusCode.NotFound, ex.StatusCode);
         }

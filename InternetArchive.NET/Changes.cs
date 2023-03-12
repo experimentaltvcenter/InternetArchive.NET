@@ -34,7 +34,7 @@ public class Changes
         }
     }
 
-    private async Task<GetResponse> GetHelperAsync(string? token = null, DateTime? startDate = null, bool? fromBeginning = null)
+    private async Task<GetResponse> GetHelperAsync(CancellationToken cancellationToken, string? token = null, DateTime? startDate = null, bool? fromBeginning = null)
     {
         var formData = new List<KeyValuePair<string, string>>
         {
@@ -54,36 +54,36 @@ public class Changes
         }
 
         var httpContent = new FormUrlEncodedContent(formData);
-        var response = await _client.SendAsync<GetResponse>(HttpMethod.Post, Url, httpContent).ConfigureAwait(false);
+        var response = await _client.SendAsync<GetResponse>(HttpMethod.Post, Url, httpContent, cancellationToken).ConfigureAwait(false);
         if (response == null) throw new Exception("null response from server");
 
         return response;
     }
 
-    public async Task<GetResponse> GetFromBeginningAsync()
+    public async Task<GetResponse> GetFromBeginningAsync(CancellationToken cancellationToken = default)
     {
-        return await GetHelperAsync(fromBeginning: true).ConfigureAwait(false);
+        return await GetHelperAsync(cancellationToken, fromBeginning: true).ConfigureAwait(false);
     }
 
-    public async Task<GetResponse> GetStartingNowAsync()
+    public async Task<GetResponse> GetStartingNowAsync(CancellationToken cancellationToken = default)
     {
-        return await GetHelperAsync().ConfigureAwait(false);
+        return await GetHelperAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<GetResponse> GetAsync(string token)
+    public async Task<GetResponse> GetAsync(string token, CancellationToken cancellationToken = default)
     {
-        return await GetHelperAsync(token).ConfigureAwait(false);
+        return await GetHelperAsync(cancellationToken, token).ConfigureAwait(false);
     }
 
-    public async Task<GetResponse> GetAsync(DateTime startDate)
+    public async Task<GetResponse> GetAsync(DateTime startDate, CancellationToken cancellationToken = default)
     {
-        return await GetHelperAsync(startDate: startDate).ConfigureAwait(false);
+        return await GetHelperAsync(cancellationToken, startDate: startDate).ConfigureAwait(false);
     }
 
 #if NET
-    public async Task<GetResponse> GetAsync(DateOnly startDate)
+    public async Task<GetResponse> GetAsync(DateOnly startDate, CancellationToken cancellationToken = default)
     {
-        return await GetAsync(new DateTime(startDate.Year, startDate.Month, startDate.Day)).ConfigureAwait(false);
+        return await GetAsync(new DateTime(startDate.Year, startDate.Month, startDate.Day), cancellationToken).ConfigureAwait(false);
     }
 #endif
 }

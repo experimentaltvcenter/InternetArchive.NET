@@ -11,10 +11,12 @@ public class RelationshipTests
             Assert.Inconclusive("Skipping test because _config.TestCollection is null");
         }
 
-        var response = await _client.Relationships.AddAsync(_config.TestItem, _config.TestCollection, _config.TestList);
+        string identifier = await GetSharedTestIdentifierAsync();
+
+        var response = await _client.Relationships.AddAsync(identifier, _config.TestCollection, _config.TestList);
         Assert.IsTrue(response?.Success);
 
-        var parents = await _client.Relationships.GetParentsAsync(_config.TestItem);
+        var parents = await _client.Relationships.GetParentsAsync(identifier);
         Assert.IsTrue(parents.Lists.ContainsKey(_config.TestCollection), "Item not added to collection");
 
         var children = await _client.Relationships.GetChildrenAsync(_config.TestCollection, _config.TestList);
@@ -22,10 +24,10 @@ public class RelationshipTests
         // can't test this because query API is not in immediate sync with metadata API and there is no identifier to wait on
         // await WaitForServerAsync(_config.TestCollection)
 
-        response = await _client.Relationships.RemoveAsync(_config.TestItem, _config.TestCollection, _config.TestList);
+        response = await _client.Relationships.RemoveAsync(identifier, _config.TestCollection, _config.TestList);
         Assert.IsTrue(response?.Success);
 
-        parents = await _client.Relationships.GetParentsAsync(_config.TestItem);
+        parents = await _client.Relationships.GetParentsAsync(identifier);
         Assert.IsNotNull(parents?.Error); // no parent so returns error string
         Assert.IsFalse(parents.Lists.ContainsKey(_config.TestCollection), "Item not removed from collection");
     }
