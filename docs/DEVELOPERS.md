@@ -34,7 +34,6 @@ Then copy [appsettings.json](../InternetArchive.NET.Tests/appsettings.json) to `
 
 * Set ``emailAddress`` to your archive.org account email address
 * Set ``accessKey`` and ``secretKey`` to your [archive.org keys](https://archive.org/account/s3.php) (or set environment variables)
-* Set ``testItem`` to a unique identifier. It will be reused across test runs.
 * Optionally set ``canDelete`` to ``true`` if you have admin rights. If not, items will be darked instead of deleted.
 * Optionally fill in ``testList`` and ``testCollection`` if you have them. If not, part of RelationshipTests will be ignored. (This is ok.)
 
@@ -42,7 +41,7 @@ Do not share or post your appsetings.private.json file. (It is already included 
 
 ## Continuous Integration
 
-Running unit tests against a public resource is tricky. New accounts may be flagged for spam. You can only add ten reviews a day. Without admin access, you cannot delete items and clean up after yourself. Testing functionality like "SimpleLists" requires objects that only archive.org admins can create for you.
+Running unit tests against a public resource is tricky. New accounts may be flagged for spam. An account can only add ten reviews a day. Without admin access, you cannot delete items and clean up after yourself. Testing functionality like "SimpleLists" requires objects that only archive.org admins can create for you.
 
 So &ndash; create tests, and definitely run them. But trust your instincts if they fail suspiciously. Sometimes "try again tomorrow" is the correct approach.
 

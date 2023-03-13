@@ -3,6 +3,7 @@
 * [Setup](#setup)
 * [Create an API Client](#create-an-api-client)
 * [Client Configuraiton](#client-configuration)
+* [Exception Handling](#error-handling)
 * [Changes API](#changes-api)
 * [Item API](#item-api)
 * [Metadata API](#metadata-api)
@@ -11,6 +12,7 @@
 * [Search API](#search-api)
 * [Tasks API](#tasks-api)
 * [Views API](#views-api)
+* [Wayback API](#wayback-api)
 
 For an overview of archive.org services, view the archive.org documentation at https://archive.org/services/docs/api/index.html.
 
@@ -57,11 +59,31 @@ Request a priority boost. Note restrictions and please use responsibly. https://
 archive.RequestInteractivePriority();
 ```
 
+Set the client to read-only. In this mode, functions that modify data throw an exception.
+
+```csharp
+archive.ReadOnly = true;
+```
+
 Perform a dry-run. In this mode, functions that modify data do not contact the server and return NULL.
 
 ```csharp
 archive.DryRun = true;
 ```
+
+`ReadOnly` and `DryRun` may also be specified on the client constructors.
+
+<br />
+
+# Exception Handling
+
+The library throws the following exceptions:
+
+`InternetArchiveException` - General exceptions.
+
+`InternetArchiveRequestException` - Thrown when an API call to the archive.org server returns an HTTP error code. Check the `Body` parameter for further details on the error.
+
+`InternetArchiveResponseException` - Thrown when an API call succeeds but the HTTP response contains a structured error code.
 
 <br />
 
@@ -89,7 +111,7 @@ var response = await archive.Changes.GetAsync(DateTime startDate);
 Then page through additional results using the response token:
 
 ```csharp
-var response = await archive.Changes.GetAsync(response.Token);
+response = await archive.Changes.GetAsync(response.Token);
 ```
 
 <br />
@@ -139,7 +161,8 @@ Delete a file from a bucket:
 ```csharp
 await archive.Item.DeleteAsync(new Item.DeleteRequest
 {
-    Bucket = $"my_identifier/hello-again.txt",
+    Bucket = $"my_identifier",
+    RemoteFilename = "hello-again.txt",
     CascadeDelete = true,
     KeepOldVersion = false
 });
@@ -237,7 +260,7 @@ var request = new Search.ScrapeRequest
 
 var response = await archive.Search.ScrapeAsync(request);
 
-// note: ScrapeAsync attempts to map archive.org schema to a typed class.
+// Note: ScrapeAsync attempts to map archive.org schema to a typed class.
 // In case of problems, file an issue and use this as a workaround:
 
 using var jsonDocument = await archive.Search.ScrapeAsJsonAsync(request); // IDisposable
@@ -253,7 +276,14 @@ Submit tasks to update items at the archive.<br />https://archive.org/services/d
 Submit a task:
 
 ```csharp
-var response = await archive.Tasks.SubmitAsync(identifier, Tasks.Command.MakeDark);
+var response = await archive.Tasks.SubmitAsync(identifier, Tasks.Command.Delete); // requires admin privs
+```
+
+Some tasks have mandatory parameters. Helper methods are provided:
+```csharp
+var response = await.archive.Tasks.RenameAsync(identifier, newIdentifier)
+var response = await.archive.Tasks.MakeDarkAsync(string identifier, "mandatory comment")
+var response = await.archive.Tasks.MakeUndarkAsync(string identifier, "mandatory comment")
 ```
 
 Re-run a task:
@@ -297,14 +327,56 @@ https://archive.org/services/docs/api/views_api.html
 
 
 ```csharp
-GetItemSummaryAsync(string identifier, bool legacy = false)
-GetItemSummaryAsync(IEnumerable<string> identifiers, bool legacy = false)
+// GetItemSummaryAsync(string identifier, bool legacy = false)
+// GetItemSummaryAsync(IEnumerable<string> identifiers, bool legacy = false)
+var itemSummary = await GetItemSummaryAsync(string identifier);
+
+// GetItemDetailsAsync<T>(string identifier, T startDate, T endDate)
+var itemDetails = await archive.GetItemDetailsAsync(identifier, DateTime.Today.AddDays(-1), DateTime.Today.AddDays(-7));
+
+// GetCollectionDetailsAsync<T>(string collection, T startDate, T endDate)
+var collectionDetails = await archive.GetItemDetailsAsync(collection, DateTime.Today.AddDays(-1), DateTime.Today.AddDays(-7));
 
 // <T> is DateTime or DateOnly
+// GetItemSummaryPerDayAsync<T>(string identifier)
+// GetItemSummaryPerDayAsync<T>(IEnumerable<string> identifiers)
+var itemSummaryPerDay = await archive.GetItemSummaryPerDayAsync<DateOnly>(identifier);
+var itemSummariesPerDay = await archive.GetItemSummaryPerDayAsync<DateTime>(new [] { identifier1, identifier2 });
+```
 
-GetItemSummaryPerDayAsync<T>(string identifier)
-GetItemSummaryPerDayAsync<T>(IEnumerable<string> identifiers)
+<br />
 
-GetItemDetailsAsync<T>(string identifier, T startDate, T endDate)
-GetCollectionDetailsAsync<T>(string collection, T startDate, T endDate)
+# Wayback API
+Retrieve snapshots of archived web sites.<br />
+https://github.com/internetarchive/wayback/tree/master/wayback-cdx-server  
+https://archive.org/help/wayback_api.php [obsolete]
+
+
+```csharp
+var request = new Wayback.SearchRequest
+{
+    Url = "www.experimentaltvcenter.org",
+    StartTime = new DateTime(2000, 1, 1),
+    EndTime = new DateTime(2002, 1, 1),
+    Limit = 5
+};
+
+var response = await archive.Wayback.SearchAsync(request);
+
+// page through additional results
+while (response.ResumeKey != null)
+{
+    request.ResumeKey = response.ResumeKey;
+    response = await archive.Wayback.SearchAsync(request);
+}
+```
+
+These API are obsolete but provided for completeness:
+
+```csharp
+var response = await archive.WayBack.IsAvailableAsync("www.experimentaltvcenter.org");
+```
+
+```csharp
+var response = await archive.WayBack.IsAvailableAsync("www.experimentaltvcenter.org", new DateTime(2001, 3, 31));
 ```

@@ -12,7 +12,7 @@ The Internet Archive is an amazing resource, but also subject to abuse and attac
 
 * Also note the [Microsoft.Extensions.Http.Polly](https://docs.microsoft.com/en-us/dotnet/architecture/microservices/implement-resilient-applications/implement-http-call-retries-exponential-backoff-polly) retry logic in [ServiceExtensions.cs](../InternetArchive.NET/ServiceExtensions.cs). If you discover additional failure modes please [submit an issue](https://github.com/experimentaltvcenter/InternetArchive.NET/issues).
 
-* The default HTTP timeout is 15 minutes which also sets the maximum time per upload chunk. You can [override it](https://github.com/experimentaltvcenter/InternetArchive.NET/blob/main/InternetArchive.NET/ServiceExtensions.cs#L23).
+* The default HTTP timeout is 15 minutes which also sets the maximum time per upload chunk. You can [override it](https://github.com/experimentaltvcenter/InternetArchive.NET/blob/main/InternetArchive.NET/ServiceExtensions.cs#L22).
 
 ## Support
 
