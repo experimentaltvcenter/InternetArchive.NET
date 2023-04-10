@@ -10,7 +10,7 @@ public class Metadata
         _client = client;
     }
 
-    public class ReadResponse : IDisposable
+    public class ReadResponse
     {
         [JsonPropertyName("created")]
         [JsonConverter(typeof(UnixEpochDateTimeNullableConverter))]
@@ -70,7 +70,7 @@ public class Metadata
             public DateTimeOffset? VirusCheckDate { get; set; }
         }
 
-        public JsonDocument? Metadata { get; set; }
+        public JsonElement? Metadata { get; set; }
 
         [JsonPropertyName("item_last_updated")]
         [JsonConverter(typeof(UnixEpochDateTimeNullableConverter))]
@@ -87,13 +87,6 @@ public class Metadata
         [JsonPropertyName("workable_servers")]
         [JsonConverter(typeof(EnumerableStringConverter))]
         public IEnumerable<string>? WorkableServers { get; set; }
-
-        public void Dispose()
-        {
-            Metadata?.Dispose();
-            Metadata = null;
-            GC.SuppressFinalize(this);
-        }
     }
 
     public async Task<ReadResponse> ReadAsync(string identifier, CancellationToken cancellationToken = default)

@@ -23,8 +23,8 @@ public class SearchTests
 
         Assert.AreEqual(response.Count, response.Items.Count());
 
-        using var json = await _client.Search.ScrapeAsJsonAsync(request);
-        var count = json.RootElement.GetProperty("count").GetInt32();
+        var json = await _client.Search.ScrapeAsJsonAsync(request);
+        var count = json.GetProperty("count").GetInt32();
         Assert.AreEqual(response.Count, count);
     }
 }

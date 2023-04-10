@@ -22,10 +22,6 @@ Sorting out the schema across nearly 700 billion items is important work and we 
 
 Users of the Internet Archive can attach arbitrary JSON to items. Instead of dynamics and ``ExpandoObject`` we decided to standardize on [System.Text.Json](https://docs.microsoft.com/en-us/dotnet/api/system.text.json).
 
-Note that [JsonDocument is IDisposable](https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-use-dom-utf8jsonreader-utf8jsonwriter#jsondocument-is-idisposable). As such, we mark classes containing ``JsonDocument`` fields as ``IDisposable``. 
-
-Users of the library can wrap calls with ``using`` statements to maximize performance.
-
 ## Unit Tests
 
 To run tests, first [create an account on archive.org](https://archive.org/account/signup). 

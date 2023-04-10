@@ -1,5 +1,20 @@
 # Changelog
 
+### 4.0.0
+
+- **Breaking change**: Metadata is now returned as ``JsonElement`` instead of JsonDocument.
+This removes the need to worry about ``using`` statements and lifecycle issues when calling the library.
+
+```csharp
+ // old
+  using var response = await archive.Metadata.ReadAsync("morphtoyharing");
+  Console.WriteLine(response.Metadata?.RootElement.GetProperty("description"));
+
+ // new
+  var response = await archive.Metadata.ReadAsync("morphtoyharing");
+  Console.WriteLine(response.Metadata.Value.GetProperty("description"));
+```
+
 ### 3.0.0
 
 - **Breaking change**: ``Wayback.IsAvailable`` -> ``Wayback.IsAvailableAsync``

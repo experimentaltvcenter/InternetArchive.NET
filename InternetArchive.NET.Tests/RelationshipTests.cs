@@ -61,7 +61,7 @@ public class RelationshipTests
     [TestMethod]
     public async Task GetParentsAsync()
     {
-        using var parents = await _client.Relationships.GetParentsAsync(_config.TestChild);
+        var parents = await _client.Relationships.GetParentsAsync(_config.TestChild);
 
         Assert.IsNotNull(parents);
         Assert.IsNotNull(parents.Lists);

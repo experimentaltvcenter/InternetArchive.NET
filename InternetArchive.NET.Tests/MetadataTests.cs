@@ -14,7 +14,7 @@ public class MetadataTests
     [TestMethod]
     public async Task ReadMetadataAsync()
     {
-        using var response = await _client.Metadata.ReadAsync(_testItem);
+        var response = await _client.Metadata.ReadAsync(_testItem);
         
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.DataNodePrimary);
@@ -32,7 +32,8 @@ public class MetadataTests
         Assert.IsTrue(response.WorkableServers.Any());
         // Assert.IsNull(response.ServersUnavailable); may be null or not
 
-        var collection = response.Metadata.RootElement.EnumerateObject().Where(x => x.NameEquals("collection")).SingleOrDefault();
+        Assert.IsTrue(response.Metadata.HasValue);
+        var collection = response.Metadata.Value.EnumerateObject().Where(x => x.NameEquals("collection")).SingleOrDefault();
         Assert.IsNotNull(collection);
 
         var file = response.Files.Where(x => x.Format == "Text" && x.Name == _config.RemoteFilename).SingleOrDefault();
@@ -52,12 +53,12 @@ public class MetadataTests
     [TestMethod]
     public async Task WriteMetadataAsync()
     {
-        using var readResponse1 = await _client.Metadata.ReadAsync(_testItem);
+        var readResponse1 = await _client.Metadata.ReadAsync(_testItem);
 
         var patch = new JsonPatchDocument();
         string value;
 
-        if (readResponse1?.Metadata?.RootElement.TryGetProperty("testkey", out var element) == true)
+        if (readResponse1?.Metadata?.TryGetProperty("testkey", out var element) == true)
         {
             value = element.GetString() == "flop" ? "flip" : "flop";
             patch.Replace("/testkey", value);
@@ -76,7 +77,7 @@ public class MetadataTests
         Assert.IsNotNull(writeResponse.Log);
         Assert.IsNotNull(writeResponse.TaskId);
 
-        using var readResponse2 = await _client.Metadata.ReadAsync(_testItem);
-        Assert.AreEqual(value, readResponse2?.Metadata?.RootElement.GetProperty("testkey").GetString());
+        var readResponse2 = await _client.Metadata.ReadAsync(_testItem);
+        Assert.AreEqual(value, readResponse2?.Metadata?.GetProperty("testkey").GetString());
     }
 }

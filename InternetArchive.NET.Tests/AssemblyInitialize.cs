@@ -127,7 +127,7 @@ public class Init
             var sha1 = SHA1.Create().ComputeHash(sourceStream);
             sourceStream.Seek(0, SeekOrigin.Begin);
 
-            using var metadata = await _client.Metadata.ReadAsync(request.Bucket);
+            var metadata = await _client.Metadata.ReadAsync(request.Bucket);
 
             Assert.IsNotNull(metadata);
             Assert.IsTrue(metadata.Files.Any());

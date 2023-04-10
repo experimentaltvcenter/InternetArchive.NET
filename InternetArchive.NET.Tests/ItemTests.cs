@@ -56,7 +56,9 @@ public class ItemTests
     {
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Metadata);
-        Assert.IsTrue(response.Metadata.RootElement.TryGetProperty(key, out var element));
+        Assert.IsTrue(response.Metadata.HasValue);
+
+        Assert.IsTrue(response.Metadata.Value.TryGetProperty(key, out var element));
         Assert.AreEqual(expectedValue, element.GetString());
     }
 
@@ -64,7 +66,8 @@ public class ItemTests
     {
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Metadata);
-        Assert.IsFalse(response.Metadata.RootElement.TryGetProperty(key, out var _));
+        Assert.IsTrue(response.Metadata.HasValue);
+        Assert.IsFalse(response.Metadata.Value.TryGetProperty(key, out var _));
     }
 
     [TestMethod]
@@ -82,12 +85,13 @@ public class ItemTests
 
         // verify metadata
 
-        using var response1 = await _client.Metadata.ReadAsync(identifier);
+        var response1 = await _client.Metadata.ReadAsync(identifier);
         AssertHasMetadata(response1, "title", "test_title");
         AssertHasMetadata(response1, "testfield", "hello");
 
         Assert.IsNotNull(response1.Metadata);
-        var metadataFiltered = response1.Metadata.RootElement.EnumerateObject().Where(x => x.Name != "title" && x.Name != "testfield" && x.Name != "collection").Select(x => new KeyValuePair<string, object?>(x.Name, x.Value)).ToList();
+        Assert.IsTrue(response1.Metadata.HasValue);
+        var metadataFiltered = response1.Metadata.Value.EnumerateObject().Where(x => x.Name != "title" && x.Name != "testfield" && x.Name != "collection").Select(x => new KeyValuePair<string, object?>(x.Name, x.Value)).ToList();
         metadataFiltered.Add(new KeyValuePair<string, object?>("collection", "test_collection"));
 
         // delete existing metadata
@@ -101,7 +105,7 @@ public class ItemTests
 
         await WaitForServerAsync(identifier);
 
-        using var response2 = await _client.Metadata.ReadAsync(identifier);
+        var response2 = await _client.Metadata.ReadAsync(identifier);
         Assert.IsNotNull(response2);
         AssertHasMetadata(response2, "title", identifier); // title reverts to identifier/bucket when removed
         AssertNoMetadata(response2, "testfield");
@@ -118,7 +122,7 @@ public class ItemTests
 
         await WaitForServerAsync(identifier);
 
-        using var response3 = await _client.Metadata.ReadAsync(identifier);
+        var response3 = await _client.Metadata.ReadAsync(identifier);
         Assert.IsNotNull(response3?.Files.Where(x => x.Name == _config.RemoteFilename).SingleOrDefault());
         Assert.IsNotNull(response3?.Files.Where(x => x.Name == _remoteFilename2).SingleOrDefault());
 
@@ -134,7 +138,7 @@ public class ItemTests
 
         await WaitForServerAsync(identifier);
 
-        using var response4 = await _client.Metadata.ReadAsync(identifier);
+        var response4 = await _client.Metadata.ReadAsync(identifier);
         Assert.IsNotNull(response4?.Files.Where(x => x.Name == _config.RemoteFilename).SingleOrDefault());
         Assert.IsNull(response4?.Files.Where(x => x.Name == _remoteFilename2).SingleOrDefault());
 
@@ -150,7 +154,7 @@ public class ItemTests
 
         await WaitForServerAsync(identifier);
 
-        using var response5 = await _client.Metadata.ReadAsync(identifier);
+        var response5 = await _client.Metadata.ReadAsync(identifier);
         Assert.IsNull(response5?.Files.Where(x => x.Name == _config.RemoteFilename).SingleOrDefault());
         Assert.IsNull(response5?.Files.Where(x => x.Name == _remoteFilename2).SingleOrDefault());
 
@@ -184,7 +188,7 @@ public class ItemTests
         putRequest.SourceStream = File.OpenRead(_config.LocalFilename);
         await VerifyHashesAsync(putRequest);
 
-        using var response = await _client.Metadata.ReadAsync(identifier);
+        var response = await _client.Metadata.ReadAsync(identifier);
         Assert.IsNotNull(response?.Files.Where(x => x.Name == _config.RemoteFilename).SingleOrDefault());
         Assert.IsNotNull(response?.Files.Where(x => x.Name == _remoteFilename2).SingleOrDefault());
     }

@@ -11,27 +11,15 @@ public class Relationships
         _client = client;
     }
 
-    public class GetParentsResponse : IDisposable
+    public class GetParentsResponse
     {
         public Dictionary<string, SimpleList> Lists { get; set; } = new();
         public string? Error { get; set; }
-
-        private bool disposedValue;
-        public void Dispose()
-        {
-            if (!disposedValue)
-            {
-                Lists.GetEnumerator().Dispose();
-                disposedValue = true;
-            }
-
-            GC.SuppressFinalize(this);
-        }
     }
 
-    public class SimpleList : IDisposable
+    public class SimpleList
     {
-        public JsonDocument? Notes { get; set; }
+        public JsonElement? Notes { get; set; }
 
         [JsonPropertyName("sys_changed_by")]
         public LastChangedBy_? LastChangedBy { get; set; }
@@ -49,33 +37,19 @@ public class Relationships
         [JsonPropertyName("sys_last_changed")]
         [JsonConverter(typeof(DateTimeNullableConverter))]
         public DateTime? LastChangedDate { get; set; }
-
-        public void Dispose()
-        {
-            Notes?.Dispose();
-            Notes = null;
-            GC.SuppressFinalize(this);
-        }
     }
 
-    internal class SimpleListResponse : IDisposable
+    internal class SimpleListResponse
     {
         public Dictionary<string, Dictionary<string, SimpleList>>? Result { get; set; }
         public string? Error { get; set; }
-
-        public void Dispose()
-        {
-            Result?.GetEnumerator().Dispose();
-            Result = null;
-            GC.SuppressFinalize(this);
-        }
     }
 
     public async Task<GetParentsResponse> GetParentsAsync(string identifier, CancellationToken cancellationToken = default)
     {
-        using var simpleListResponse = await _client.GetAsync<SimpleListResponse>(Url(identifier), cancellationToken).ConfigureAwait(false);
+        var simpleListResponse = await _client.GetAsync<SimpleListResponse>(Url(identifier), cancellationToken).ConfigureAwait(false);
 
-        using var response = new GetParentsResponse { Error = simpleListResponse.Error };
+        var response = new GetParentsResponse { Error = simpleListResponse.Error };
         if (simpleListResponse.Result != null) response.Lists = simpleListResponse.Result.Values.Single();
 
         return response;

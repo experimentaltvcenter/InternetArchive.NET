@@ -164,9 +164,10 @@ public class Search
         return await _client.GetAsync<ScrapeResponse>(Url, query, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<JsonDocument> ScrapeAsJsonAsync(ScrapeRequest request, CancellationToken cancellationToken = default)
+    public async Task<JsonElement> ScrapeAsJsonAsync(ScrapeRequest request, CancellationToken cancellationToken = default)
     {
         var query = ScrapeHelper(request);
-        return await _client.GetAsync<JsonDocument>(Url, query, cancellationToken).ConfigureAwait(false);
+        using var jsonDocument = await _client.GetAsync<JsonDocument>(Url, query, cancellationToken).ConfigureAwait(false);
+        return jsonDocument.RootElement.Clone();
     }
 }

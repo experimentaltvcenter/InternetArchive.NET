@@ -46,7 +46,7 @@ Enable write access using API keys (see https://archive.org/account/s3.php).
 Slowest (requiring an extra API call to retrieve keys). If a value isn't passed in, the user is prompted via console, making this useful for interactive scenarios.
 
 ```csharp
-var archive = await Client.CreateAsync(string emailAddress, string password);
+var archive = await Client.CreateAsync(string? emailAddress, string? password);
 ```
 
 <br />
@@ -131,8 +131,8 @@ Create an item (similar to an Amazon S3 bucket):
 ```csharp
 var metadata = new List<KeyValuePair<string, object?>>
 {
-    new KeyValuePair<string, object?>("collection", "test_collection"),
-    new KeyValuePair<string, object?>("mediatype", "texts")
+    new("collection", "test_collection"),
+    new("mediatype", "texts")
 };
 
 await archive.Item.PutAsync(new Item.PutRequest
@@ -177,8 +177,8 @@ Read or write JSON metadata for an archive item.<br />https://archive.org/servic
 
 
 ```csharp
-using var response = await archive.Metadata.ReadAsync("morphtoyharing"); // IDisposable
-Console.WriteLine(response.Metadata?.RootElement.GetProperty("description"));
+var response = await archive.Metadata.ReadAsync("morphtoyharing");
+Console.WriteLine(response.Metadata.Value.GetProperty("description"));
 ```
 
 ```csharp
@@ -198,7 +198,7 @@ Query relationships:
 string parent = "library_of_atlantis";
 string child = "nowyourespeaking00chap";
 
-using var parents = await archive.Relationships.GetParentsAsync(child); // IDisposable
+var parents = await archive.Relationships.GetParentsAsync(child);
 var children = await archive.Relationships.GetChildrenAsync(parent);
 ```
 
@@ -238,7 +238,7 @@ Delete your review:
 var response = await archive.Reviews.DeleteAsync("nowyourespeaking00chap");
 ```
 
-Read your review. To retrieve all reviews, use the [Metadata API](#metadata-api) instead.
+Read your review. To retrieve all reviews, use the [Metadata API](#metadata-api).
 
 ```csharp
 var response = await archive.Reviews.GetAsync("nowyourespeaking00chap");
@@ -263,7 +263,7 @@ var response = await archive.Search.ScrapeAsync(request);
 // Note: ScrapeAsync attempts to map archive.org schema to a typed class.
 // In case of problems, file an issue and use this as a workaround:
 
-using var jsonDocument = await archive.Search.ScrapeAsJsonAsync(request); // IDisposable
+var jsonElement = await archive.Search.ScrapeAsJsonAsync(request);
 ```
 
 To explore search parameters, visit https://archive.org/advancedsearch.php.
