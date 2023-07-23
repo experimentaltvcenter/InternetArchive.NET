@@ -1,5 +1,4 @@
 ﻿global using Microsoft.AspNetCore.JsonPatch;
-global using Microsoft.AspNetCore.WebUtilities;
 global using Microsoft.Extensions.Logging;
 global using System.Collections.Concurrent;
 global using System.Globalization;
@@ -104,7 +103,7 @@ public class Client
     {
         var client = GetClient(readOnly, dryRun);
 
-        if (emailAddress == null || password == null)
+        if (string.IsNullOrWhiteSpace(emailAddress) || string.IsNullOrWhiteSpace(password))
         {
             var loginPrompt = new StringBuilder("Log in to archive.org");
 
@@ -131,7 +130,10 @@ public class Client
 
                 if (string.IsNullOrWhiteSpace(emailAddress)) throw new InternetArchiveException("Email address required");
 
-                password ??= ReadPasswordFromConsole("Password: ");
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    password = ReadPasswordFromConsole("Password: ");
+                }
             }
         }
 
@@ -148,7 +150,7 @@ public class Client
     private static Client GetClient(bool readOnly, bool dryRun)
     {
         var client = ServiceExtensions.Services.InitDefaults().BuildServiceProvider().GetRequiredService<Client>();
-        
+
         client.ReadOnly = readOnly;
         client.DryRun = dryRun;
 
@@ -167,12 +169,19 @@ public class Client
 
     internal async Task<Response> GetAsync<Response>(string url, Dictionary<string, string>? query, CancellationToken cancellationToken)
     {
-        if (query != null) url = QueryHelpers.AddQueryString(url, query);
+        var uriBuilder = new UriBuilder(url);
+
+        if (query?.Any() == true)
+        {
+            var queryString = ParseQueryString(string.Empty);
+            foreach (var entry in query) queryString[entry.Key] = entry.Value;
+            uriBuilder.Query = queryString.ToString();
+        }
 
         using var httpRequest = new HttpRequestMessage
         {
             Method = HttpMethod.Get,
-            RequestUri = new Uri(url)
+            RequestUri = uriBuilder.Uri
         };
 
         var response = await SendAsync<Response>(httpRequest, cancellationToken).ConfigureAwait(false);
@@ -282,6 +291,8 @@ public class Client
     private HttpResponseMessage Log(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var logLevel = response.IsSuccessStatusCode ? LogLevel.Information : LogLevel.Error;
+        if (response.StatusCode == HttpStatusCode.NotFound) logLevel = LogLevel.Warning;
+
         if (_logger.IsEnabled(logLevel))
         {
             if (response.Headers.Any())

@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 
 [assembly: Parallelize(Workers = 8, Scope = ExecutionScope.MethodLevel)]
@@ -84,6 +85,21 @@ public class Init
         return $"tmp-{Guid.NewGuid():N}";
     }
 
+    internal static void DisplayStatus(Item.PutRequest.UploadStatus status)
+    {
+        var sb = new StringBuilder(status.Request.Bucket);
+
+        var remoteName = status.Request.RemoteFilename ?? Path.GetFileName(status.Request.LocalPath);
+        if (remoteName != null) sb.Append($"/{remoteName}");
+        sb.Append(": ");
+        
+        if (status.Part.HasValue) sb.Append($"part {status.Part} of {status.TotalParts} | ");
+
+        sb.Append($"{status.PercentComplete:P0} | {status.BytesUploaded} of {status.TotalBytes} bytes");
+
+        Console.WriteLine(sb);
+    }
+
     internal static async Task<string> CreateTestItemAsync(string? identifier = null, IEnumerable<KeyValuePair<string, object?>>? extraMetadata = null)
     {
         identifier ??= GenerateIdentifier();
@@ -106,6 +122,8 @@ public class Init
             CreateBucket = true,
             NoDerive = true
         };
+
+        putRequest.ProgressChanged += DisplayStatus;
 
         await _client.Item.PutAsync(putRequest);
         await WaitForServerAsync(identifier);
@@ -143,7 +161,7 @@ public class Init
         }
     }
 
-    public static async Task WaitForServerAsync(string identifier, int minutes = 20, int secondsBetween = 10)   
+    public static async Task WaitForServerAsync(string identifier, int minutes = 30, int secondsBetween = 10)   
     {
         int retries = minutes * 60 / secondsBetween;
 

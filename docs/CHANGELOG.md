@@ -1,8 +1,14 @@
 # Changelog
 
+### 4.1.0
+
+- Add ``ProgressChanged`` event on ``Item.PutRequest`` to track upload progress
+- Optimization to split Multipart Uploads evenly across threads
+- Remove dependency on deprecated ``Microsoft.AspNetCore.WebUtilities``
+
 ### 4.0.0
 
-- **Breaking change**: Metadata is now returned as ``JsonElement`` instead of JsonDocument.
+- **Breaking change**: Metadata is now returned as ``JsonElement`` instead of ``JsonDocument``.
 This removes the need to worry about ``using`` statements and lifecycle issues when calling the library.
 
 ```csharp
@@ -28,11 +34,11 @@ This removes the need to worry about ``using`` statements and lifecycle issues w
 
 ### 2.0.0
 
-- **Breaking change** to ``Item.DeleteAsync`` (use DeleteRequest.RemoteFilename)
+- **Breaking change** to ``Item.DeleteAsync`` (fill in ``DeleteRequest.RemoteFilename``)
 - Add Wayback API
 - Add Multipart Upload support
 - Wrap all async calls in .ConfigureAwait(false)
-- Update to System.Text.Json 7.0.0
+- Update to ``System.Text.Json`` 7.0.0
 
 ### 1.0.0
 

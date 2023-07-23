@@ -7,6 +7,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternetArchive.NET.Tests",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InternetArchive.NET", "InternetArchive.NET\InternetArchive.NET.csproj", "{D7563BB7-F6DA-4E75-BD80-F2211F8B8D62}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{BDBC3D62-9ECD-4A7A-8CFC-2ADB24B705F0}"
+	ProjectSection(SolutionItems) = preProject
+		docs\CHANGELOG.md = docs\CHANGELOG.md
+		docs\DEVELOPERS.md = docs\DEVELOPERS.md
+		docs\README.md = docs\README.md
+		docs\TROUBLESHOOTING.md = docs\TROUBLESHOOTING.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

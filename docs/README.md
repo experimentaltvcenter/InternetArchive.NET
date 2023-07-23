@@ -26,7 +26,7 @@ The library is Dependency Injection aware but requires a minimal amount of cerem
 
 You may override the defaults by calling ``ServiceExtensions.AddInternetArchiveServices()`` and/or ``ServiceExtensions.AddInternetArchiveDefaultRetryPolicies()`` before creating a client. 
 
-Note that ``AddInternetArchiveServices()`` sets a default HTTP timeout of 15 minutes which sets the maximum upload time for a file.
+Note that ``AddInternetArchiveServices()`` sets a default HTTP timeout of 15 minutes which sets the maximum upload time for a file chunk.
 
 <br />
 

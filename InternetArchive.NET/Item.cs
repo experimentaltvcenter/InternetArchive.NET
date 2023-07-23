@@ -45,6 +45,20 @@ public class Item
             var filename = RemoteFilename ?? Path.GetFileName(LocalPath) ?? throw new Exception("RemoteFilename or LocalPath required");
             return encoded ? Encode(filename) : filename;
         }
+
+        public class UploadStatus
+        {
+            public PutRequest Request { get; set; } = null!;
+            public long BytesUploaded { get; set; }
+            public long TotalBytes { get; set; }
+            public int? Part { get; set; }
+            public int? TotalParts { get; set; }
+            public decimal PercentComplete { get { return (decimal)BytesUploaded / TotalBytes; } }
+        }
+
+        public delegate void ProgressChangedHandler(UploadStatus uploadStatus);
+        public event ProgressChangedHandler? ProgressChanged;
+        internal void TriggerProgressChanged(UploadStatus uploadStatus) { ProgressChanged?.Invoke(uploadStatus); }
     }
 
     private static string Encode(string s)
@@ -77,11 +91,10 @@ public class Item
 
                 if (isMultipartUpload == false)
                 {
-                    uploadRequest.Content = new StreamContent(sourceStream);
+                    uploadRequest.Content = new BufferedStreamContent(sourceStream, request, cancellationToken: cancellationToken);
 
                     using var md5 = MD5.Create();
                     uploadRequest.Content.Headers.ContentMD5 = md5.ComputeHash(sourceStream);
-                    sourceStream.Seek(0, SeekOrigin.Begin);
                 }
             }
             else
@@ -114,8 +127,7 @@ public class Item
                     int count = 0;
                     foreach (var kv in group)
                     {
-                        string? val = kv.Value?.ToString();
-                        if (val == null) throw new NullReferenceException();
+                        string? val = kv.Value?.ToString() ?? throw new NullReferenceException();
                         if (val.Any(x => x > 127))
                         {
                             val = $"uri({Uri.EscapeDataString(val)})";
@@ -139,7 +151,7 @@ public class Item
 
     private async Task<IEnumerable<XmlModels.Upload>> GetUploadsInProgressAsync(PutRequest request, CancellationToken cancellationToken)
     {
-        var listMultipartUploadsRequest = new HttpRequestMessage
+        using var listMultipartUploadsRequest = new HttpRequestMessage
         {
             Method = HttpMethod.Get,
             RequestUri = new Uri($"{Url}/{request.Bucket}/?uploads")
@@ -162,7 +174,7 @@ public class Item
         var uploads = await GetUploadsInProgressAsync(bucket, cancellationToken).ConfigureAwait(false);
         foreach (var upload in uploads)
         {
-            var abortMultipartUploadRequest = new HttpRequestMessage
+            using var abortMultipartUploadRequest = new HttpRequestMessage
             {
                 Method = HttpMethod.Delete,
                 RequestUri = new Uri($"{Url}/{bucket}/{upload.Key}?uploadId={upload.UploadId}")
@@ -177,7 +189,7 @@ public class Item
         var uploads = await GetUploadsInProgressAsync(request, cancellationToken).ConfigureAwait(false);
         foreach (var upload in uploads)
         {
-            var abortMultipartUploadRequest = new HttpRequestMessage
+            using var abortMultipartUploadRequest = new HttpRequestMessage
             {
                 Method = HttpMethod.Delete,
                 RequestUri = new Uri($"{Url}/{request.Bucket}/{request.Filename()}?uploadId={upload.UploadId}")
@@ -247,7 +259,6 @@ public class Item
     {
         var parts = new ConcurrentBag<XmlModels.Part>();
         string uploadId = null!;
-        using var synchronizedStream = Stream.Synchronized(sourceStream);
 
         try
         {
@@ -258,7 +269,7 @@ public class Item
             {
                 uploadId = uploads.First().UploadId;
 
-                var listPartsRequest = new HttpRequestMessage
+                using var listPartsRequest = new HttpRequestMessage
                 {
                     Method = HttpMethod.Get,
                     RequestUri = new Uri($"{Url}/{request.Bucket}/{request.Filename()}?uploadId={uploadId}")
@@ -283,46 +294,64 @@ public class Item
             uploadId = initiateMultipartUploadResult.UploadId;
         }
 
-        var totalParts = synchronizedStream.Length / request.MultipartUploadChunkSize;
-        if (synchronizedStream.Length % request.MultipartUploadChunkSize != 0) totalParts++;
+        var totalParts = sourceStream.Length / request.MultipartUploadChunkSize;
+        if (sourceStream.Length % request.MultipartUploadChunkSize != 0) totalParts++;
 
         using var semaphore = new SemaphoreSlim(request.MultipartUploadThreadCount);
         var tasks = new List<Task>();
 
         for (var i = 1; i <= totalParts; i++)
         {
-            if (request.MultipartUploadSkipParts.Contains(i) || parts.Any(x=> x.PartNumber == i)) continue;
+            var partNumber = i; // for capture
+
+            // break upload into chunks of equal size and adjust final chunk size if necessary
+
+            var chunkSize = sourceStream.Length / totalParts;
+            var position = (partNumber - 1) * chunkSize;
+            if (partNumber == totalParts) chunkSize += sourceStream.Length % chunkSize;
+
+            if (request.MultipartUploadSkipParts.Contains(i) || parts.Any(x => x.PartNumber == i)) 
+            {
+                request.TriggerProgressChanged(new PutRequest.UploadStatus { Request = request, BytesUploaded = chunkSize, TotalBytes = chunkSize, Part = i, TotalParts = (int) totalParts });
+                continue;
+            }
 
             await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            var partNumber = i;
 
             tasks.Add(Task.Run(async () =>
             {
                 try
                 {
-                    var buffer = new byte[request.MultipartUploadChunkSize];
-                    int length;
+                    var buffer = new byte[chunkSize];
 
-                    synchronizedStream.Seek((partNumber - 1) * request.MultipartUploadChunkSize, SeekOrigin.Begin);
-                    length = synchronizedStream.Read(buffer, 0, request.MultipartUploadChunkSize);
+                    lock (sourceStream)
+                    {
+                        sourceStream.Position = position;
+                        var length = sourceStream.Read(buffer, 0, Convert.ToInt32(chunkSize));
+                        if (length != chunkSize) throw new Exception("invalid length");
+                    }
+
+                    using var memoryStream = new MemoryStream(buffer);
 
                     using var partRequest = new HttpRequestMessage
                     {
                         Method = HttpMethod.Put,
                         RequestUri = new Uri($"{Url}/{request.Bucket}/{request.Filename()}?partNumber={partNumber}&uploadId={uploadId}"),
-                        Content = new ByteArrayContent(buffer, 0, length)
+                        Content = new BufferedStreamContent(memoryStream, request, partNumber, Convert.ToInt32(totalParts), cancellationToken: cancellationToken)
                     };
 
                     using var md5 = MD5.Create();
-                    partRequest.Content.Headers.ContentMD5 = md5.ComputeHash(buffer, 0, length);
+                    partRequest.Content.Headers.ContentMD5 = md5.ComputeHash(buffer);
 
-                    var partResponse = await _client.SendAsync<HttpResponseMessage>(partRequest, cancellationToken).ConfigureAwait(false);
-                    if (partResponse?.Headers?.ETag?.Tag == null) throw new Exception("Invalid multipart upload response for part {partNumber}");
+                    using var partResponse = await _client.SendAsync<HttpResponseMessage>(partRequest, cancellationToken).ConfigureAwait(false);
+
+                    string? tag = partResponse?.Headers?.ETag?.Tag;
+                    if (_client.DryRun == false && tag == null) throw new Exception($"Invalid multipart upload response for part {partNumber}");
 
                     parts.Add(new XmlModels.Part
                     {
                         PartNumber = partNumber,
-                        ETag = partResponse.Headers.ETag.Tag
+                        ETag = tag ?? "dryrun"
                     });
                 }
                 finally
@@ -430,5 +459,49 @@ public class Item
         };
 
         return await _client.GetAsync<UseLimitResponse>(Url, query, cancellationToken).ConfigureAwait(false);
+    }
+
+    public class BufferedStreamContent : StreamContent
+    {
+        public BufferedStreamContent(Stream inputStream, PutRequest request, int? part = null, int? totalParts = null, CancellationToken cancellationToken = default) : base(inputStream)
+        {
+            InputStream = inputStream;
+            Request = request;
+            Part = part;
+            TotalParts = totalParts;
+            CancellationToken = cancellationToken;
+        }
+
+        private Stream InputStream { get; set; }
+        PutRequest Request { get; set; }
+        private int? Part { get; set; }
+        private int? TotalParts { get; set; }
+        private CancellationToken CancellationToken { get; set; }
+
+        protected override async Task SerializeToStreamAsync(Stream outputStream, TransportContext? context)
+        {
+            InputStream.Position = 0;
+
+            var buffer = new byte[1024 * 1024 * 2];
+            long bytesUploaded = 0;
+
+            while (bytesUploaded < InputStream.Length)
+            {
+                var count = InputStream.Read(buffer, 0, buffer.Length);
+                if (count == 0) break;
+
+                await outputStream.WriteAsync(buffer, 0, count, CancellationToken).ConfigureAwait(false);
+
+                bytesUploaded += count;
+
+                Request.TriggerProgressChanged(new PutRequest.UploadStatus { Request = Request, BytesUploaded = bytesUploaded, TotalBytes = InputStream.Length, Part = Part, TotalParts = TotalParts });
+            }
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = InputStream.Length;
+            return true;
+        }
     }
 }

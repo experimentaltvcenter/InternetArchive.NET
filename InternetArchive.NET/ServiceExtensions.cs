@@ -8,11 +8,13 @@ public static class ServiceExtensions
 {
     public static IServiceCollection Services { get; private set; } = new ServiceCollection();
     private static readonly Lazy<IPolicyRegistry<string>> PolicyRegistry = new(() => Services.AddPolicyRegistry());
+    private static ILogger? Logger;
 
     internal static IServiceCollection InitDefaults(this IServiceCollection services)
     {
         if (!services.Any(x => x.ServiceType == typeof(Client))) 
         {
+            Logger = services.BuildServiceProvider().GetService<ILoggerFactory>()?.CreateLogger(Name);
             services.AddInternetArchiveServices().AddInternetArchiveDefaultRetryPolicies();
         }
 
@@ -22,7 +24,6 @@ public static class ServiceExtensions
     public static IServiceCollection AddInternetArchiveServices(this IServiceCollection services, TimeSpan? timeout = null)
     {
         services.AddTransient<Client>();
-        var logger = services.BuildServiceProvider().GetService<ILoggerFactory>()?.CreateLogger(Client.Name);
 
         services.AddHttpClient(Name, client =>
         {
@@ -48,8 +49,6 @@ public static class ServiceExtensions
 
     public static IServiceCollection AddInternetArchiveDefaultRetryPolicies(this IServiceCollection services)
     {
-        var logger = services.BuildServiceProvider().GetService<ILoggerFactory>()?.CreateLogger(Name);
-
         var HttpStatusCode_TooManyRequests = (HttpStatusCode)429;
 
         var noRetryCodes = new HashSet<HttpStatusCode> {
@@ -66,7 +65,7 @@ public static class ServiceExtensions
                 new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8) }, 
                 onRetry: (response, delay, retryAttempt, context) =>
                 {
-                    logger?.LogInformation("HTTP status {statusCode} retry #{retryAttempt} delay {delay}", (int) response.Result.StatusCode, retryAttempt, delay);
+                    Logger?.LogInformation("HTTP status {statusCode} retry #{retryAttempt} delay {delay}", (int) response.Result.StatusCode, retryAttempt, delay);
                 });
 
         var retryPutPolicy = Policy
@@ -75,7 +74,7 @@ public static class ServiceExtensions
                 new[] { TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(60) },
                 onRetry: (response, delay, retryAttempt, context) =>
                 {
-                    logger?.LogInformation("HTTP PUT status {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, delay);
+                    Logger?.LogInformation("HTTP PUT status {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, delay);
                 });
 
         var serviceUnavailablePolicy = Policy
@@ -84,7 +83,7 @@ public static class ServiceExtensions
                 new[] { TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(120), TimeSpan.FromSeconds(180) },
                 onRetry: (response, delay, retryAttempt, context) =>
                 {
-                    logger?.LogInformation("HTTP error {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, delay);
+                    Logger?.LogInformation("HTTP error {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, delay);
                 });
 
         var tooManyRequestsPolicy = Policy
@@ -105,7 +104,7 @@ public static class ServiceExtensions
                 onRetryAsync: async (response, timespan, retryAttempt, context) => 
                 {
                     await Task.FromResult(0).ConfigureAwait(false);
-                    logger?.LogInformation("HTTP error {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, timespan);
+                    Logger?.LogInformation("HTTP error {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, timespan);
                 });
 
         services

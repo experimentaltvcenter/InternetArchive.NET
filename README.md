@@ -10,7 +10,7 @@
 - Uses System.Text.Json
 - Uses Microsoft.Extensions.Http.Polly for [retry logic](https://docs.microsoft.com/en-us/dotnet/architecture/microservices/implement-resilient-applications/implement-http-call-retries-exponential-backoff-polly)
 - Supports DateOnly on .NET 6
-- Only four dependencies (all from Microsoft)
+- Only three dependencies (all from Microsoft)
 
 ## Quick Start
 

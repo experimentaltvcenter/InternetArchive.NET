@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
@@ -14,7 +13,7 @@ public class ItemTests
     public static void ClassInit(TestContext _)
     {
         var chars = Encoding.ASCII.GetBytes("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz          ");
-        var s = new byte[1024 * 1024 * 11]; // 11MB
+        var s = new byte[1024 * 1024 * 11 + 17]; // 11MB + 17 bytes to test modulus in chunk sizing
 
         var random = new Random();
         for (int i = 0; i < s.Length; i++)
@@ -182,6 +181,8 @@ public class ItemTests
             NoDerive = true
         };
 
+        putRequest.ProgressChanged += DisplayStatus;
+
         await _client.Item.PutAsync(putRequest);
         await WaitForServerAsync(identifier);
 
@@ -202,7 +203,7 @@ public class ItemTests
             new KeyValuePair<string, object?>("noindex", "true"),
         };
 
-        return new Item.PutRequest
+        var putRequest = new Item.PutRequest
         {
             Bucket = identifier,
             LocalPath = _largeFilePath,
@@ -212,6 +213,10 @@ public class ItemTests
             MultipartUploadMinimumSize = 0, // force multipart upload
             MultipartUploadChunkSize = 1024 * 1024 * 5 // 5 MB chunks
         };
+
+        putRequest.ProgressChanged += DisplayStatus;
+
+        return putRequest;
     }
 
     [TestMethod]
