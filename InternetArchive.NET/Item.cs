@@ -128,7 +128,7 @@ public class Item
                     foreach (var kv in group)
                     {
                         string? val = kv.Value?.ToString() ?? throw new NullReferenceException();
-                        if (val.Any(x => x > 127))
+                        if (val.Any(chr => chr < 32 || chr > 126)) //printable ASCII range, except DEL (127)
                         {
                             val = $"uri({Uri.EscapeDataString(val)})";
                         }
