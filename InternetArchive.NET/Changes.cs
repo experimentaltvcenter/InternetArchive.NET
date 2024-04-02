@@ -1,14 +1,10 @@
 ﻿namespace InternetArchive;
 
-public class Changes
+public class Changes(Client client)
 {
     private readonly string Url = "https://be-api.us.archive.org/changes/v1";
 
-    private readonly Client _client;
-    public Changes(Client client)
-    {
-        _client = client;
-    }
+    private readonly Client _client = client;
 
     public class GetResponse
     {
@@ -30,7 +26,7 @@ public class Changes
 
         public IEnumerable<string> Identifiers()
         {
-            return Changes?.Select(x => x.Identifier) ?? Enumerable.Empty<string>();
+            return Changes?.Select(x => x.Identifier) ?? [];
         }
     }
 
@@ -38,8 +34,8 @@ public class Changes
     {
         var formData = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>("access", _client.AccessKey),
-            new KeyValuePair<string, string>("secret", _client.SecretKey)
+            new("access", _client.AccessKey),
+            new("secret", _client.SecretKey)
         };
 
         if (token != null) formData.Add(new KeyValuePair<string, string>("token", token));
@@ -54,10 +50,8 @@ public class Changes
         }
 
         var httpContent = new FormUrlEncodedContent(formData);
-        var response = await _client.SendAsync<GetResponse>(HttpMethod.Post, Url, httpContent, cancellationToken).ConfigureAwait(false);
-        if (response == null) throw new Exception("null response from server");
-
-        return response;
+        return await _client.SendAsync<GetResponse>(HttpMethod.Post, Url, httpContent, cancellationToken).ConfigureAwait(false)
+            ?? throw new Exception("null response from server");
     }
 
     public async Task<GetResponse> GetFromBeginningAsync(CancellationToken cancellationToken = default)

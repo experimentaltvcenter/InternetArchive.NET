@@ -3,7 +3,7 @@ namespace InternetArchiveTests;
 [TestClass]
 public class MetadataTests
 {
-    protected static string _testItem = null!;
+    private static string _testItem = null!;
 
     [ClassInitialize()]
     public static async Task ClassInit(TestContext _)

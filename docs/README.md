@@ -2,7 +2,7 @@
 
 * [Setup](#setup)
 * [Create an API Client](#create-an-api-client)
-* [Client Configuraiton](#client-configuration)
+* [Client Configuration](#client-configuration)
 * [Exception Handling](#error-handling)
 * [Changes API](#changes-api)
 * [Item API](#item-api)
@@ -24,9 +24,7 @@ Install the [InternetArchive.NET](https://www.nuget.org/packages/InternetArchive
 
 The library is Dependency Injection aware but requires a minimal amount of ceremony to get started. By default, the library registers a custom HttpClient configured with retry policies tuned to archive.org.
 
-You may override the defaults by calling ``ServiceExtensions.AddInternetArchiveServices()`` and/or ``ServiceExtensions.AddInternetArchiveDefaultRetryPolicies()`` before creating a client. 
-
-Note that ``AddInternetArchiveServices()`` sets a default HTTP timeout of 15 minutes which sets the maximum upload time for a file chunk.
+You may override the defaults by calling ``ServiceExtensions.AddInternetArchiveDefaultRetryPolicies()`` and/or ``ServiceExtensions.AddInternetArchiveServices()`` before creating a client. 
 
 <br />
 
@@ -52,6 +50,12 @@ var archive = await Client.CreateAsync(string? emailAddress, string? password);
 <br />
 
 # Client Configuration
+
+Set the timeout for HTTP operations. The default is 15 minutes which also sets the maximum time for a file upload chunk.
+
+```csharp
+archive.SetTimeout(TimeSpan.FromMinutes(5));
+```
 
 Request a priority boost. Note restrictions and please use responsibly. https://archive.org/services/docs/api/ias3.html#express-queue
 
@@ -119,7 +123,6 @@ response = await archive.Changes.GetAsync(response.Token);
 # Item API
 Create and delete items and files at the archive.<br />https://archive.org/services/docs/api/ias3.html
 
-
 Check quotas and global limits:
 
 ```csharp
@@ -142,6 +145,20 @@ await archive.Item.PutAsync(new Item.PutRequest
     RemoteFilename = "hello.txt",
     Metadata = metadata,
     CreateBucket = true
+});
+```
+
+Adjust multipart (chunked) upload parameters:
+
+```csharp
+await archive.Item.PutAsync(new Item.PutRequest
+{
+    Bucket = "my-identifier",
+    LocalPath = "/path/to/local/file.txt",
+    RemoteFilename = "hello.txt",
+    MultipartUploadMinimumSize = 1024 * 1024 * 300, // default is files over 300 MB
+    MultipartUploadChunkSize = 1024 * 1024 * 200, // default is 200 MB chunks
+    MultipartUploadThreadCount 3 // default is three simultaneous uploads
 });
 ```
 
@@ -282,7 +299,10 @@ var response = await archive.Tasks.SubmitAsync(identifier, Tasks.Command.Delete)
 Some tasks have mandatory parameters. Helper methods are provided:
 ```csharp
 var response = await.archive.Tasks.RenameAsync(identifier, newIdentifier)
+
 var response = await.archive.Tasks.MakeDarkAsync(string identifier, "mandatory comment")
+
+// NOTE: undarking an item requires admin privileges
 var response = await.archive.Tasks.MakeUndarkAsync(string identifier, "mandatory comment")
 ```
 

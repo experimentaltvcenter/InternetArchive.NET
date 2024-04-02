@@ -1,19 +1,15 @@
 ﻿namespace InternetArchive;
 
-public class Relationships
+public class Relationships(Client client)
 {
     private static string Url(string identifier) => $"https://archive.org/metadata/{identifier}/simplelists";
     private static readonly string SearchUrl = "https://archive.org/advancedsearch.php";
 
-    private readonly Client _client;
-    public Relationships(Client client)
-    {
-        _client = client;
-    }
+    private readonly Client _client = client;
 
     public class GetParentsResponse
     {
-        public Dictionary<string, SimpleList> Lists { get; set; } = new();
+        public Dictionary<string, SimpleList> Lists { get; set; } = [];
         public string? Error { get; set; }
     }
 
@@ -73,7 +69,7 @@ public class Relationships
 
         public IEnumerable<string?> Identifiers()
         {
-            return Response?.Docs?.Select(x => x.Identifier) ?? Enumerable.Empty<string?>();
+            return Response?.Docs?.Select(x => x.Identifier) ?? [];
         }
     }
 
@@ -84,9 +80,9 @@ public class Relationships
             { "q", $"simplelists__{listname ?? "catchall"}:{identifier}" },
             { "fl", "identifier" },
             { "output", "json" },
+            { "rows", rows == null ? "*" : rows.Value.ToString() }
         };
 
-        query.Add("rows", rows == null ? "*" : rows.Value.ToString());
         if (page.HasValue) query.Add("page", page.Value.ToString());
 
         return await _client.GetAsync<GetChildrenResponse>(SearchUrl, query, cancellationToken).ConfigureAwait(false);

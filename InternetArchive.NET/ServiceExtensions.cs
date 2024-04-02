@@ -1,13 +1,12 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Polly;
-using Polly.Registry;
 
 namespace InternetArchive;
 
 public static class ServiceExtensions
 {
     public static IServiceCollection Services { get; private set; } = new ServiceCollection();
-    private static readonly Lazy<IPolicyRegistry<string>> PolicyRegistry = new(() => Services.AddPolicyRegistry());
+    private static readonly List<IAsyncPolicy<HttpResponseMessage>> Policies = [];
     private static ILogger? Logger;
 
     internal static IServiceCollection InitDefaults(this IServiceCollection services)
@@ -15,7 +14,7 @@ public static class ServiceExtensions
         if (!services.Any(x => x.ServiceType == typeof(Client))) 
         {
             Logger = services.BuildServiceProvider().GetService<ILoggerFactory>()?.CreateLogger(Name);
-            services.AddInternetArchiveServices().AddInternetArchiveDefaultRetryPolicies();
+            services.AddInternetArchiveDefaultRetryPolicies().AddInternetArchiveServices();
         }
 
         return services;
@@ -25,7 +24,7 @@ public static class ServiceExtensions
     {
         services.AddTransient<Client>();
 
-        services.AddHttpClient(Name, client =>
+        var clientBuilder = services.AddHttpClient(Name, client =>
         {
             client.Timeout = timeout ?? TimeSpan.FromMinutes(15);
         })
@@ -38,11 +37,12 @@ public static class ServiceExtensions
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
 #endif
             UseCookies = false
-        })
-        .AddPolicyHandlerFromRegistry("RetryPolicy")
-        .AddPolicyHandlerFromRegistry("RetryPutPolicy")
-        .AddPolicyHandlerFromRegistry("ServiceUnavailablePolicy")
-        .AddPolicyHandlerFromRegistry("TooManyRequestsPolicy");
+        });
+
+        foreach (var policy in Policies)
+        {
+            clientBuilder.AddPolicyHandler(policy);
+        }
 
         return services;
     }
@@ -62,7 +62,7 @@ public static class ServiceExtensions
         var retryPolicy = Policy
             .HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode && !noRetryCodes.Contains(r.StatusCode))
             .WaitAndRetryAsync(
-                new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8) }, 
+                [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8)], 
                 onRetry: (response, delay, retryAttempt, context) =>
                 {
                     Logger?.LogInformation("HTTP status {statusCode} retry #{retryAttempt} delay {delay}", (int) response.Result.StatusCode, retryAttempt, delay);
@@ -71,7 +71,7 @@ public static class ServiceExtensions
         var retryPutPolicy = Policy
             .HandleResult<HttpResponseMessage>(r => r.StatusCode == HttpStatusCode.NotFound && r.RequestMessage?.Method == HttpMethod.Put)
             .WaitAndRetryAsync(
-                new[] { TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(60) },
+                [TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(60)],
                 onRetry: (response, delay, retryAttempt, context) =>
                 {
                     Logger?.LogInformation("HTTP PUT status {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, delay);
@@ -80,7 +80,7 @@ public static class ServiceExtensions
         var serviceUnavailablePolicy = Policy
             .HandleResult<HttpResponseMessage>(r => r.StatusCode == HttpStatusCode.ServiceUnavailable)
             .WaitAndRetryAsync(
-                new[] { TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(120), TimeSpan.FromSeconds(180) },
+                [TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(120), TimeSpan.FromSeconds(180)],
                 onRetry: (response, delay, retryAttempt, context) =>
                 {
                     Logger?.LogInformation("HTTP error {statusCode} retry #{retryAttempt} delay {delay}", (int)response.Result.StatusCode, retryAttempt, delay);
@@ -108,17 +108,24 @@ public static class ServiceExtensions
                 });
 
         services
-            .AddPolicy("RetryPolicy", retryPolicy)
-            .AddPolicy("RetryPutPolicy", retryPutPolicy)
-            .AddPolicy("ServiceUnavailablePolicy", serviceUnavailablePolicy)
-            .AddPolicy("TooManyRequestsPolicy", tooManyRequestsPolicy);
+            .AddPolicy(retryPolicy)
+            .AddPolicy(retryPutPolicy)
+            .AddPolicy(serviceUnavailablePolicy)
+            .AddPolicy(tooManyRequestsPolicy);
 
         return services;
     }
 
-    public static IServiceCollection AddPolicy(this IServiceCollection services, string name, IAsyncPolicy<HttpResponseMessage> policy)
+    public static IServiceCollection AddPolicy(this IServiceCollection services, IAsyncPolicy<HttpResponseMessage> policy)
     {
-        PolicyRegistry.Value.Add(name, policy);
+        Policies.Add(policy);
+        return services;
+    }
+
+    [Obsolete("Please remove the name parameter and use AddPolicy(policy) directly")]
+    public static IServiceCollection AddPolicy(this IServiceCollection services, string _, IAsyncPolicy<HttpResponseMessage> policy)
+    {
+        Policies.Add(policy);
         return services;
     }
 }

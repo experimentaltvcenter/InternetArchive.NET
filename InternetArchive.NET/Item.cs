@@ -3,16 +3,11 @@ using System.Xml.Serialization;
 
 namespace InternetArchive;
 
-public class Item
+public class Item(Client client)
 {
     private readonly string Url = "https://s3.us.archive.org";
 
-    private readonly Client _client;
-
-    public Item(Client client)
-    {
-        _client = client;
-    }
+    private readonly Client _client = client;
 
     public class PutRequest
     {
@@ -21,7 +16,7 @@ public class Item
         public Stream? SourceStream { get; set; }
 
         public string? RemoteFilename { get; set; }
-        public IEnumerable<KeyValuePair<string, object?>> Metadata { get; set; } = Enumerable.Empty<KeyValuePair<string, object?>>();
+        public IEnumerable<KeyValuePair<string, object?>> Metadata { get; set; } = [];
 
         public bool CreateBucket { get; set; }
         public bool NoDerive { get; set; }
@@ -31,7 +26,7 @@ public class Item
         public long MultipartUploadMinimumSize { get; set; } = 1024 * 1024 * 300; // use multipart for files over 300 MB
         public int MultipartUploadChunkSize { get; set; } = 1024 * 1024 * 200; // upload in 200 MB chunks
         public int MultipartUploadThreadCount { get; set; } = 3; // three simultaneous uploads
-        internal IEnumerable<int> MultipartUploadSkipParts { get; set; } = Enumerable.Empty<int>(); // for testing
+        internal IEnumerable<int> MultipartUploadSkipParts { get; set; } = []; // for testing
 
         public string? SimulateError { get; set; }
 
@@ -161,11 +156,11 @@ public class Item
 
         if (request.HasFilename())
         {
-            return listMultipartUploadsResult?.Uploads.Where(x => x.Key == request.Filename(encoded: false)) ?? Enumerable.Empty<XmlModels.Upload>();
+            return listMultipartUploadsResult?.Uploads.Where(x => x.Key == request.Filename(encoded: false)) ?? [];
         }
         else
         {
-            return listMultipartUploadsResult?.Uploads ?? Enumerable.Empty<XmlModels.Upload>();
+            return listMultipartUploadsResult?.Uploads ?? [];
         }
     }
 
@@ -461,22 +456,13 @@ public class Item
         return await _client.GetAsync<UseLimitResponse>(Url, query, cancellationToken).ConfigureAwait(false);
     }
 
-    public class BufferedStreamContent : StreamContent
+    public class BufferedStreamContent(Stream inputStream, PutRequest request, int? part = null, int? totalParts = null, CancellationToken cancellationToken = default) : StreamContent(inputStream)
     {
-        public BufferedStreamContent(Stream inputStream, PutRequest request, int? part = null, int? totalParts = null, CancellationToken cancellationToken = default) : base(inputStream)
-        {
-            InputStream = inputStream;
-            Request = request;
-            Part = part;
-            TotalParts = totalParts;
-            CancellationToken = cancellationToken;
-        }
-
-        private Stream InputStream { get; set; }
-        PutRequest Request { get; set; }
-        private int? Part { get; set; }
-        private int? TotalParts { get; set; }
-        private CancellationToken CancellationToken { get; set; }
+        private Stream InputStream { get; set; } = inputStream;
+        PutRequest Request { get; set; } = request;
+        private int? Part { get; set; } = part;
+        private int? TotalParts { get; set; } = totalParts;
+        private CancellationToken CancellationToken { get; set; } = cancellationToken;
 
         protected override async Task SerializeToStreamAsync(Stream outputStream, TransportContext? context)
         {
@@ -490,8 +476,11 @@ public class Item
                 var count = InputStream.Read(buffer, 0, buffer.Length);
                 if (count == 0) break;
 
+#if NET
+                await outputStream.WriteAsync(buffer.AsMemory(0, count), CancellationToken).ConfigureAwait(false);
+#else
                 await outputStream.WriteAsync(buffer, 0, count, CancellationToken).ConfigureAwait(false);
-
+#endif
                 bytesUploaded += count;
 
                 Request.TriggerProgressChanged(new PutRequest.UploadStatus { Request = Request, BytesUploaded = bytesUploaded, TotalBytes = InputStream.Length, Part = Part, TotalParts = TotalParts });

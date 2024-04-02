@@ -1,14 +1,10 @@
 ﻿namespace InternetArchive;
 
-public class Reviews
+public class Reviews(Client client)
 {
     private static string Url(string identifier) => $"https://archive.org/services/reviews.php?identifier={identifier}";
 
-    private readonly Client _client;
-    public Reviews(Client client)
-    {
-        _client = client;
-    }
+    private readonly Client _client = client;
 
     public class GetResponse : ServerResponse
     {

@@ -106,9 +106,9 @@ public class Init
 
         var metadata = new List<KeyValuePair<string, object?>>
         {
-            new KeyValuePair<string, object?>("collection", "test_collection"),
-            new KeyValuePair<string, object?>("mediatype", "texts"),
-            new KeyValuePair<string, object?>("noindex", "true"),
+            new("collection", "test_collection"),
+            new("mediatype", "texts"),
+            new("noindex", "true"),
         };
 
         if (extraMetadata != null) metadata.AddRange(extraMetadata);

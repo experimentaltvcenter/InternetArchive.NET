@@ -76,8 +76,8 @@ public class ItemTests
 
         var extraMetadata = new List<KeyValuePair<string, object?>>
         {
-            new KeyValuePair<string, object?>("title", "test_title"),
-            new KeyValuePair<string, object?>("testfield", "hello")
+            new("title", "test_title"),
+            new("testfield", "hello")
         };
 
         var identifier = await CreateTestItemAsync(extraMetadata: extraMetadata);
@@ -198,9 +198,9 @@ public class ItemTests
     {
         var metadata = new List<KeyValuePair<string, object?>>
         {
-            new KeyValuePair<string, object?>("collection", "test_collection"),
-            new KeyValuePair<string, object?>("mediatype", "texts"),
-            new KeyValuePair<string, object?>("noindex", "true"),
+            new("collection", "test_collection"),
+            new("mediatype", "texts"),
+            new("noindex", "true"),
         };
 
         var putRequest = new Item.PutRequest
@@ -274,7 +274,7 @@ public class ItemTests
         string identifier = GenerateIdentifier();
 
         var putRequest = CreateMultipartRequest(identifier);
-        putRequest.MultipartUploadSkipParts = new[] { 1, 2 };
+        putRequest.MultipartUploadSkipParts = [1, 2];
 
         await _client.Item.PutAsync(putRequest);
 

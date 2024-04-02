@@ -1,15 +1,11 @@
 ﻿namespace InternetArchive;
 
-public class Tasks
+public class Tasks(Client client)
 {
     private readonly string Url = "https://archive.org/services/tasks.php";
     private readonly string LogUrl = "https://catalogd.archive.org/services/tasks.php";
 
-    private readonly Client _client;
-    public Tasks(Client client)
-    {
-        _client = client;
-    }
+    private readonly Client _client = client;
 
     public class GetResponse : ServerResponse
     {
@@ -39,7 +35,7 @@ public class Tasks
                 [JsonPropertyName("cmd")]
                 public string? Command { get; set; }
 
-                public Dictionary<string, string> Args { get; set; } = new();
+                public Dictionary<string, string> Args { get; set; } = [];
 
                 [JsonConverter(typeof(DateTimeNullableConverter))]
                 [JsonPropertyName("submittime")]
@@ -255,7 +251,7 @@ public class Tasks
 
     public class RerunResponse : ServerResponse
     {
-        public Dictionary<string, object?> Value { get; set; } = new();
+        public Dictionary<string, object?> Value { get; set; } = [];
     }
 
     public async Task<RerunResponse?> RerunAsync(long taskId, CancellationToken cancellationToken = default)
@@ -283,7 +279,7 @@ public class Tasks
         public int? Command { get; set; }
 
         [JsonPropertyName("args")]
-        public Dictionary<string, string> Args { get; set; } = new();
+        public Dictionary<string, string> Args { get; set; } = [];
 
         [JsonPropertyName("priority")]
         public int Priority { get; set; } = 0;

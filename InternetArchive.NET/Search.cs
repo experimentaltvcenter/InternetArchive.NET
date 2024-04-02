@@ -1,14 +1,10 @@
 ﻿namespace InternetArchive;
 
-public class Search
+public class Search(Client client)
 {
     private readonly string Url = "https://archive.org/services/search/v1/scrape";
 
-    private readonly Client _client;
-    public Search(Client client)
-    {
-        _client = client;
-    }
+    private readonly Client _client = client;
 
     public class ScrapeRequest
     {
@@ -22,7 +18,7 @@ public class Search
 
     public class ScrapeResponse
     {
-        public IEnumerable<ScrapeResponseItem> Items { get; set; } = Enumerable.Empty<ScrapeResponseItem>();
+        public IEnumerable<ScrapeResponseItem> Items { get; set; } = [];
         public int? Count { get; set; }
         public string? Cursor { get; set; }
         public long? Total { get; set; }
@@ -138,7 +134,7 @@ public class Search
         public int? Year { get; set; }
     }
 
-    internal Dictionary<string, string> ScrapeHelper(ScrapeRequest request, CancellationToken cancellationToken = default)
+    internal static Dictionary<string, string> ScrapeHelper(ScrapeRequest request)
     {
         var query = new Dictionary<string, string>();
 

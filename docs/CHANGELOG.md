@@ -1,5 +1,11 @@
 # Changelog
 
+### 4.2.0
+
+- Add ``SetTimeout`` method to ``Client``
+- Update to C# 12
+- Update ``System.Text.Json`` and other dependencies to 8.0.x
+
 ### 4.1.0
 
 - Add ``ProgressChanged`` event on ``Item.PutRequest`` to track upload progress

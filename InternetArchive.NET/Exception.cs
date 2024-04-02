@@ -1,14 +1,8 @@
 ﻿namespace InternetArchive;
 
-public class InternetArchiveException : Exception
-{
-    public InternetArchiveException(string message, Exception? ex = null) : base(message, ex) { }
-}
+public class InternetArchiveException(string message, Exception? ex = null) : Exception(message, ex) { }
 
-public class InternetArchiveResponseException : InternetArchiveException
-{
-    public InternetArchiveResponseException(string message, Exception? ex = null) : base(message, ex) { }
-}
+public class InternetArchiveResponseException(string message, Exception? ex = null) : InternetArchiveException(message, ex) { }
 
 public class InternetArchiveRequestException : InternetArchiveException
 {

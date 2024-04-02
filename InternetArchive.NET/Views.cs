@@ -1,15 +1,11 @@
 ﻿namespace InternetArchive;
 
-public class Views
+public class Views(Client client)
 {
     private const string Url = "https://be-api.us.archive.org/views/v1";
     private static string DetailsUrl<T>(string type, string id, T startDate, T endDate) => $"{Url}/detail/{type}/{UrlEncode(id)}/{startDate:yyyy-MM-dd}/{endDate:yyyy-MM-dd}";
 
-    private readonly Client _client;
-    public Views(Client client)
-    {
-        _client = client;
-    }
+    private readonly Client _client = client;
 
     public class Summary
     {
@@ -44,7 +40,7 @@ public class Views
     public class SummaryDetailStats
     {
         [JsonPropertyName("per_day")]
-        public IEnumerable<long> PerDay { get; set; } = Enumerable.Empty<long>();
+        public IEnumerable<long> PerDay { get; set; } = [];
 
         [JsonPropertyName("previous_days_total")]
         public long? PreviousDaysTotal { get; set; }
@@ -68,8 +64,8 @@ public class Views
 
     public class SummaryPerDay<T>
     {
-        public IEnumerable<T> Days { get; set; } = Enumerable.Empty<T>();
-        public Dictionary<string, Summary> Ids { get; set; } = new();
+        public IEnumerable<T> Days { get; set; } = [];
+        public Dictionary<string, Summary> Ids { get; set; } = [];
     }
 
     public async Task<SummaryPerDay<T>> GetItemSummaryPerDayAsync<T>(string identifier, CancellationToken cancellationToken = default)
@@ -85,10 +81,10 @@ public class Views
     public class Details<T>
     {
         [JsonPropertyName("counts_geo")]
-        public IEnumerable<GeoCount> Counts { get; set; } = Enumerable.Empty<GeoCount>();
-        public IEnumerable<T> Days { get; set; } = Enumerable.Empty<T>();
+        public IEnumerable<GeoCount> Counts { get; set; } = [];
+        public IEnumerable<T> Days { get; set; } = [];
 
-        public IEnumerable<Referer_> Referers { get; set; } = Enumerable.Empty<Referer_>();
+        public IEnumerable<Referer_> Referers { get; set; } = [];
 
         public class GeoCount
         {

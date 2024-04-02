@@ -4,7 +4,7 @@ namespace InternetArchiveTests;
 public class ViewTests
 {
     private static readonly string _item = "adventuresoftoms00twaiiala";
-    private static readonly string[] _items = { _item, "texts" };
+    private static readonly string[] _items = [_item, "texts"];
     private static readonly string _collection = "computer-image-corporation-archive";
 
     private static void ValidateSummary(Views.Summary? view)

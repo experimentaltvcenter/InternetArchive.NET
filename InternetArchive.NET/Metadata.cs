@@ -1,14 +1,10 @@
 ﻿namespace InternetArchive;
 
-public class Metadata
+public class Metadata(Client client)
 {
     internal static string Url(string identifier) => $"https://archive.org/metadata/{identifier}";
 
-    private readonly Client _client;
-    public Metadata(Client client)
-    {
-        _client = client;
-    }
+    private readonly Client _client = client;
 
     public class ReadResponse
     {
@@ -30,7 +26,7 @@ public class Metadata
 
         public string Dir { get; set; } = null!;
 
-        public IEnumerable<File> Files { get; set; } = Enumerable.Empty<File>();
+        public IEnumerable<File> Files { get; set; } = [];
 
         public class File
         {
@@ -107,8 +103,8 @@ public class Metadata
     {
         var formData = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>("-target", target),
-            new KeyValuePair<string, string>("-patch", json)
+            new("-target", target),
+            new("-patch", json)
         };
 
         var httpContent = new FormUrlEncodedContent(formData);

@@ -1,17 +1,13 @@
 ﻿namespace InternetArchive;
 
-public class Wayback
+public class Wayback(Client client)
 {
     private const string WaybackUrl = "https://archive.org/wayback/available";
     private const string CdxUrl = "https://web.archive.org/cdx/search/cdx";
 
     internal static readonly string DateFormat = "yyyyMMddHHmmss";
 
-    private readonly Client _client;
-    public Wayback(Client client)
-    {
-        _client = client;
-    }
+    private readonly Client _client = client;
 
     public class IsAvailableResponse
     {
@@ -84,7 +80,7 @@ public class Wayback
 
     public class SearchResponse
     {
-        public List<CdxResponse> Results { get; set; } = new();
+        public List<CdxResponse> Results { get; set; } = [];
         public string? ResumeKey { get; set; }
 
         public class CdxResponse
@@ -119,7 +115,7 @@ public class Wayback
                 break;
             }
 
-            var fields = line.Split(new char[] { ' ' }, 8);
+            var fields = line.Split([' '], 8);
             if (fields.Length != 7) throw new InternetArchiveException("Unexpected number of fields returned from server");
 
             var cdxResponse = new SearchResponse.CdxResponse

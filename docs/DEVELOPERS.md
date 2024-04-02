@@ -16,7 +16,7 @@ Visit [JsonConvertors.cs](../InternetArchive.NET/JsonConverters.cs) to see the s
 
 Integer fields like "width" sometimes, but not always, return strings. These are notated when discovered using ``[JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]``.
 
-Sorting out the schema across nearly 700 billion items is important work and we appreciate you letting us know any issues you discover.
+Sorting out the schema across nearly 900 billion items is important work and we appreciate you letting us know any issues you discover.
 
 ## System.Text.Json
 

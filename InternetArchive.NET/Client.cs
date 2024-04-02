@@ -53,8 +53,8 @@ public class Client
             HttpClient.DefaultRequestHeaders.Add("authorization", $"LOW {AccessKey}:{SecretKey}");
         }
 
-        string? version = Assembly.GetExecutingAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        if (version == null) throw new InternetArchiveException("Unable to get version");
+        string? version = Assembly.GetExecutingAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? throw new InternetArchiveException("Unable to get version");
 
         var productValue = new ProductInfoHeaderValue(Name, version);
         var commentValue = new ProductInfoHeaderValue("(+https://github.com/experimentaltvcenter/InternetArchive.NET)");
@@ -162,6 +162,11 @@ public class Client
         HttpClient.DefaultRequestHeaders.Add("x-archive-interactive-priority", "1");
     }
 
+    public void SetTimeout(TimeSpan timeout)
+    {
+        HttpClient.Timeout = timeout;
+    }
+
     internal async Task<Response> GetAsync<Response>(string url, CancellationToken cancellationToken)
     {
         return await GetAsync<Response>(url, null, cancellationToken).ConfigureAwait(false);
@@ -184,12 +189,11 @@ public class Client
             RequestUri = uriBuilder.Uri
         };
 
-        var response = await SendAsync<Response>(httpRequest, cancellationToken).ConfigureAwait(false);
-        if (response == null) throw new InternetArchiveException("null response from server");
-        return response;
+        return await SendAsync<Response>(httpRequest, cancellationToken).ConfigureAwait(false)
+            ?? throw new InternetArchiveException("null response from server");
     }
 
-    internal static HashSet<HttpMethod> _readOnlyMethods = new() { HttpMethod.Head, HttpMethod.Get };   
+    internal static HashSet<HttpMethod> _readOnlyMethods = [HttpMethod.Head, HttpMethod.Get];   
     internal async Task<Response?> SendAsync<Response>(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Log(request);
@@ -363,8 +367,8 @@ public class Client
 
         var formData = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>("email", emailAddress),
-            new KeyValuePair<string, string>("password", password)
+            new("email", emailAddress),
+            new("password", password)
         };
 
         var httpContent = new FormUrlEncodedContent(formData);
@@ -416,7 +420,11 @@ public class Client
             }
             else if (keyInfo.Key == ConsoleKey.Backspace && password.Length > 0)
             {
+#if NET
+                password = password[..^1];
+#else
                 password = password.Substring(0, password.Length - 1);
+#endif
             }
             else if (!char.IsControl(keyInfo.KeyChar))
             {
@@ -431,7 +439,7 @@ public class Client
 internal static class ExtensionMethods
 {
 #if NETSTANDARD
-    public static async Task<string> ReadAsStringAsync(this HttpContent content, CancellationToken cancellationToken)
+    public static async Task<string> ReadAsStringAsync(this HttpContent content, CancellationToken _)
     {
         return await content.ReadAsStringAsync();
     }
