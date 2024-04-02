@@ -109,20 +109,20 @@ public class ViewTests
     [TestMethod]
     public async Task GetItemDetailsAsync()
     {
-        var details = await _client.Views.GetItemDetailsAsync(_item, _startDateTime, _endDateTime);
+        var details = await _client.Views.GetItemDetailsAsync(_item, _startDateTime.AddDays(-7), _endDateTime);
         ValidateDetails(details);
 
-        var details2 = await _client.Views.GetItemDetailsAsync(_item, _startDateOnly, _endDateOnly);
+        var details2 = await _client.Views.GetItemDetailsAsync(_item, _startDateOnly.AddDays(-7), _endDateOnly);
         ValidateDetails(details2);
     }
 
     [TestMethod]
     public async Task GetCollectionDetailsAsync()
     {
-        var details = await _client.Views.GetCollectionDetailsAsync(_collection, _startDateTime, _endDateTime);
+        var details = await _client.Views.GetCollectionDetailsAsync(_collection, _startDateTime.AddDays(-7), _endDateTime);
         ValidateDetails(details);
 
-        var details2 = await _client.Views.GetCollectionDetailsAsync(_collection, _startDateOnly, _endDateOnly);
+        var details2 = await _client.Views.GetCollectionDetailsAsync(_collection, _startDateOnly.AddDays(-7), _endDateOnly);
         ValidateDetails(details2);
     }
 
