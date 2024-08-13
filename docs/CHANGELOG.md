@@ -1,5 +1,9 @@
 # Changelog
 
+### 4.3.0
+
+- Update ``System.Text.Json`` (security fix) and other dependencies
+
 ### 4.2.0
 
 - Add ``SetTimeout`` method to ``Client``
