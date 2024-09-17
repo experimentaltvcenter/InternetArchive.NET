@@ -1,8 +1,10 @@
 # Changelog
 
-### 4.3.0
+### 5.0.0
 
-- Update ``System.Text.Json`` (security fix) and other dependencies
+- **Breaking change**: Internet Archive removed Wayback API functionality coinciding with their Google partnership. 
+``WayBack.IsAvailableAsync``, ``WayBack.GetNumPagesAsync``, and the ``Wayback.SearchRequest.Offset`` parameter are no longer available.
+- Update to latest ``System.Text.Json``
 
 ### 4.2.0
 

@@ -9,41 +9,6 @@ public class Wayback(Client client)
 
     private readonly Client _client = client;
 
-    public class IsAvailableResponse
-    {
-        [JsonPropertyName("available")]
-        public bool IsAvailable { get; set; }
-
-        public string? Url { get; set; }
-
-        [JsonConverter(typeof(WaybackDateTimeOffsetNullableConverter))]
-        public DateTimeOffset? Timestamp { get; set; }
-
-        [JsonConverter(typeof(NullableHttpStatusCodeConverter))]
-        public HttpStatusCode? Status { get; set; }
-    }
-
-    internal class WaybackResponse
-    {
-        [JsonPropertyName("archived_snapshots")]
-        public ArchivedSnapshots_? ArchivedSnapshots { get; set; }
-
-        internal class ArchivedSnapshots_
-        {
-            [JsonPropertyName("closest")]
-            public IsAvailableResponse? IsAvailableResponse { get; set; }
-        }
-    }
-
-    public async Task<IsAvailableResponse> IsAvailableAsync(string url, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default)
-    {
-        var query = new Dictionary<string, string> { { "url", url } };
-        if (timestamp.HasValue) query.Add("timestamp", timestamp.Value.ToString(DateFormat));
-
-        var response = await _client.GetAsync<WaybackResponse>(WaybackUrl, query, cancellationToken).ConfigureAwait(false);
-        return response.ArchivedSnapshots?.IsAvailableResponse ?? new IsAvailableResponse();
-    }
-
     public class SearchRequest
     {
         public string? Url { get; set; }
@@ -52,7 +17,7 @@ public class Wayback(Client client)
         public string? MatchType { get; set; }
         public string? Collapse { get; set; }
         public int? Limit { get; set; }
-        public int? Offset { get; set; }
+        [Obsolete] public int? Offset { get; set; }
         public int? Page { get; set; }
         public int? PageSize { get; set; }
         public bool FastLatest { get; set; }
@@ -61,6 +26,10 @@ public class Wayback(Client client)
         internal Dictionary<string, string> ToQuery()
         {
             if (Url == null) throw new InternetArchiveException("Url is required");
+#pragma warning disable CS0612 // Type or member is obsolete
+            if (Offset.HasValue) throw new InternetArchiveException("Offset is no longer supported");
+#pragma warning restore CS0612
+
             var query = new Dictionary<string, string> { { "url", Url }, { "showResumeKey", "true" } };
 
             if (StartTime.HasValue) query.Add("from", StartTime.Value.ToString(DateFormat));
@@ -68,7 +37,6 @@ public class Wayback(Client client)
             if (MatchType != null) query.Add("matchType", MatchType);
             if (Collapse != null) query.Add("collapse", Collapse);
             if (Limit.HasValue) query.Add("limit", Limit.Value.ToString());
-            if (Offset.HasValue) query.Add("offset", Offset.Value.ToString());
             if (Page.HasValue) query.Add("page", Page.Value.ToString());
             if (PageSize.HasValue) query.Add("pageSize", PageSize.Value.ToString());
             if (FastLatest) query.Add("fastLatest", "true");
@@ -135,12 +103,4 @@ public class Wayback(Client client)
         return response;
     }
 
-    public async Task<int?> GetNumPagesAsync(string url, CancellationToken cancellationToken = default)
-    {
-        var query = new SearchRequest { Url = url }.ToQuery();
-        query.Add("showNumPages", "true");
-
-        var response = await _client.GetAsync<string>(CdxUrl, query, cancellationToken).ConfigureAwait(false);
-        return Convert.ToInt32(response);
-    }
 }
