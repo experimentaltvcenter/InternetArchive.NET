@@ -1,5 +1,10 @@
 # Changelog
 
+### 6.0.0
+
+- Now requires .NET 8 or later
+- Update dependencies
+
 ### 5.0.0
 
 - **Breaking change**: Internet Archive removed Wayback API functionality coinciding with their Google partnership. 

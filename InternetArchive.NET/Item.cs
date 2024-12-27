@@ -322,7 +322,11 @@ public class Item(Client client)
                     lock (sourceStream)
                     {
                         sourceStream.Position = position;
+#if NET
+                        var length = sourceStream.Read(buffer.AsSpan(0, Convert.ToInt32(chunkSize)));
+#else
                         var length = sourceStream.Read(buffer, 0, Convert.ToInt32(chunkSize));
+#endif
                         if (length != chunkSize) throw new Exception("invalid length");
                     }
 
@@ -334,10 +338,12 @@ public class Item(Client client)
                         RequestUri = new Uri($"{Url}/{request.Bucket}/{request.Filename()}?partNumber={partNumber}&uploadId={uploadId}"),
                         Content = new BufferedStreamContent(memoryStream, request, partNumber, Convert.ToInt32(totalParts), cancellationToken: cancellationToken)
                     };
-
+#if NET
+                    partRequest.Content.Headers.ContentMD5 = MD5.HashData(buffer);
+#else
                     using var md5 = MD5.Create();
                     partRequest.Content.Headers.ContentMD5 = md5.ComputeHash(buffer);
-
+#endif
                     using var partResponse = await _client.SendAsync<HttpResponseMessage>(partRequest, cancellationToken).ConfigureAwait(false);
 
                     string? tag = partResponse?.Headers?.ETag?.Tag;
@@ -473,7 +479,11 @@ public class Item(Client client)
 
             while (bytesUploaded < InputStream.Length)
             {
+#if NET
+                var count = InputStream.Read(buffer.AsSpan());
+#else
                 var count = InputStream.Read(buffer, 0, buffer.Length);
+#endif
                 if (count == 0) break;
 
 #if NET

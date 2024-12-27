@@ -23,7 +23,7 @@ public class JsonConverterTests
 
         Assert.AreEqual(1, test2?.WorkableServers?.Count());
 
-        response.WorkableServers = new[] { "1", "2" };
+        response.WorkableServers = [ "1", "2" ];
 
         json = JsonSerializer.Serialize(response);
         var test3 = JsonSerializer.Deserialize<Metadata.ReadResponse>(json);
@@ -31,7 +31,36 @@ public class JsonConverterTests
         Assert.AreEqual(2, test3?.WorkableServers?.Count());
     }
 
-    public class TestDateOnly
+    private class TestUnixEpoch
+    {
+        [JsonConverter(typeof(UnixEpochDateTimeNullableConverter))]
+        public DateTimeOffset? TestDate { get; set; }
+    }
+
+    [TestMethod]
+    public void UnixEpochDateTimeNullableConverter()
+    {
+        var testDate = new DateTimeOffset(2001, 01, 25, 0, 0, 0, TimeSpan.Zero);
+
+        var response = new TestUnixEpoch { TestDate = testDate };
+        var json = JsonSerializer.Serialize(response);
+
+        var test = JsonSerializer.Deserialize<TestUnixEpoch>(json);
+        Assert.IsNotNull(test);
+        Assert.AreEqual(testDate, test.TestDate);
+
+        json = $"{{ \"TestDate\" : \"{testDate.ToUnixTimeSeconds()}\" }}";
+        test = JsonSerializer.Deserialize<TestUnixEpoch>(json);
+        Assert.IsNotNull(test);
+        Assert.AreEqual(testDate, test.TestDate);
+
+        json = "{ \"TestDate\" : null }";
+        test = JsonSerializer.Deserialize<TestUnixEpoch>(json);
+        Assert.IsNotNull(test);
+        Assert.IsNull(test.TestDate);
+    }
+
+    private class TestDateOnly
     {
         public DateOnly? TestDate { get; set; }
     }
@@ -47,7 +76,7 @@ public class JsonConverterTests
         var test = JsonSerializer.Deserialize<TestDateOnly>(json);
         Assert.IsNotNull(test);
         Assert.AreEqual(testDate, test.TestDate);
-
+    
         json = "{ \"TestDate\" : null }";
         test = JsonSerializer.Deserialize<TestDateOnly>(json);
         Assert.IsNotNull(test);

@@ -33,12 +33,12 @@ You may override the defaults by calling ``ServiceExtensions.AddInternetArchiveD
 Create a read-only client:
 
 ```csharp
- var archive = Client.CreateReadOnly();
+var archive = Client.CreateReadOnly();
 ```
 Enable write access using API keys (see https://archive.org/account/s3.php).
 
 ```csharp
- var archive = Client.Create(string accessKey, string secretKey);
+var archive = Client.Create(string accessKey, string secretKey);
 ```
 
 Slowest (requiring an extra API call to retrieve keys). If a value isn't passed in, the user is prompted via console, making this useful for interactive scenarios.
@@ -298,12 +298,16 @@ var response = await archive.Tasks.SubmitAsync(identifier, Tasks.Command.Delete)
 
 Some tasks have mandatory parameters. Helper methods are provided:
 ```csharp
-var response = await.archive.Tasks.RenameAsync(identifier, newIdentifier)
+var response = await.archive.Tasks.RenameAsync(identifier, newIdentifier);
+```
 
-var response = await.archive.Tasks.MakeDarkAsync(string identifier, "mandatory comment")
+```csharp
+var response = await.archive.Tasks.MakeDarkAsync(string identifier, "mandatory comment");
+```
 
+```csharp
 // NOTE: undarking an item requires admin privileges
-var response = await.archive.Tasks.MakeUndarkAsync(string identifier, "mandatory comment")
+var response = await.archive.Tasks.MakeUndarkAsync(string identifier, "mandatory comment");
 ```
 
 Re-run a task:
@@ -369,7 +373,6 @@ var itemSummariesPerDay = await archive.GetItemSummaryPerDayAsync<DateTime>(new 
 # Wayback API
 Retrieve snapshots of archived web sites.<br />
 https://github.com/internetarchive/wayback/tree/master/wayback-cdx-server  
-https://archive.org/help/wayback_api.php [obsolete]
 
 
 ```csharp
@@ -389,14 +392,4 @@ while (response.ResumeKey != null)
     request.ResumeKey = response.ResumeKey;
     response = await archive.Wayback.SearchAsync(request);
 }
-```
-
-These API are obsolete but provided for completeness:
-
-```csharp
-var response = await archive.WayBack.IsAvailableAsync("www.experimentaltvcenter.org");
-```
-
-```csharp
-var response = await archive.WayBack.IsAvailableAsync("www.experimentaltvcenter.org", new DateTime(2001, 3, 31));
 ```

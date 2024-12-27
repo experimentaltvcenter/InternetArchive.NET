@@ -9,8 +9,8 @@ public class SearchTests
         var request = new Search.ScrapeRequest
         {
             Query = "scanimate",
-            Fields = new[] { "identifier", "title", "description" },
-            Sorts = new[] { "title" }
+            Fields = [ "identifier", "title", "description" ],
+            Sorts = [ "title" ]
         };
         
         var response = await _client.Search.ScrapeAsync(request);

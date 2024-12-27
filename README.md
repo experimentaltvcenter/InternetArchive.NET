@@ -6,10 +6,8 @@
 .NET library providing access to API services at [Internet Archive](https://archive.org) (archive.org).
 
 - MIT License
-- Supports .NET 6 and .NET Standard 2.0 on Linux, Mac and Windows
-- Uses System.Text.Json
+- Targets .NET 8 on Linux, Mac and Windows and .NET Standard 2.0
 - Uses Microsoft.Extensions.Http.Polly for [retry logic](https://docs.microsoft.com/en-us/dotnet/architecture/microservices/implement-resilient-applications/implement-http-call-retries-exponential-backoff-polly)
-- Supports DateOnly on .NET 6
 - Only three dependencies (all from Microsoft)
 
 ## Quick Start
@@ -21,8 +19,8 @@ var archive = Client.CreateReadOnly();
 var response = await archive.Search.ScrapeAsync(new Search.ScrapeRequest
 {
     Query = "TRS-80",
-    Fields = new[] { "identifier", "title", "description" },
-    Sorts = new[] { "title" }
+    Fields = [ "identifier", "title", "description" ],
+    Sorts = [ "title" ]
 });
 ```
 
