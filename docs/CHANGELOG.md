@@ -1,5 +1,12 @@
 # Changelog
 
+### 6.1.0
+
+- Add Wayback Machine Save Page Now API:
+``Wayback.SavePageAsync``
+``Wayback.GetSavePageStatusAsync``
+``Wayback.GetSavePageSystemStatusAsync``
+
 ### 6.0.0
 
 - Now requires .NET 8 or later
@@ -8,7 +15,7 @@
 ### 5.0.0
 
 - **Breaking change**: Internet Archive removed Wayback API functionality coinciding with their Google partnership. 
-``WayBack.IsAvailableAsync``, ``WayBack.GetNumPagesAsync``, and the ``Wayback.SearchRequest.Offset`` parameter are no longer available.
+``Wayback.IsAvailableAsync``, ``Wayback.GetNumPagesAsync``, and the ``Wayback.SearchRequest.Offset`` parameter are no longer available.
 - Update to latest ``System.Text.Json``
 
 ### 4.2.0

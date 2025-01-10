@@ -7,6 +7,7 @@ global using System.Net;
 global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
+global using System.Reflection;
 
 global using static InternetArchive.Client;
 global using static System.Web.HttpUtility;
@@ -15,7 +16,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Xml;
 using System.Xml.Serialization;
 
@@ -110,7 +110,7 @@ public class Client
             var restrictions = new List<string>();
             if (readOnly) restrictions.Add("readOnly");
             if (dryRun) restrictions.Add("dryRun");
-            if (restrictions.Any()) loginPrompt.Append($" [{string.Join(", ", restrictions)}]");
+            if (restrictions.Count > 0) loginPrompt.Append($" [{string.Join(", ", restrictions)}]");
 
             Console.WriteLine(loginPrompt);
             Console.WriteLine();
@@ -176,7 +176,7 @@ public class Client
     {
         var uriBuilder = new UriBuilder(url);
 
-        if (query?.Any() == true)
+        if (query?.Count > 0)
         {
             var queryString = ParseQueryString(string.Empty);
             foreach (var entry in query) queryString[entry.Key] = entry.Value;
@@ -193,7 +193,7 @@ public class Client
             ?? throw new InternetArchiveException("null response from server");
     }
 
-    internal static HashSet<HttpMethod> _readOnlyMethods = [HttpMethod.Head, HttpMethod.Get];   
+    internal static HashSet<HttpMethod> _readOnlyMethods = [HttpMethod.Head, HttpMethod.Get];
     internal async Task<Response?> SendAsync<Response>(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Log(request);
@@ -231,29 +231,55 @@ public class Client
             return (Response)(object)responseString;
         }
 
-        if (httpResponse?.Content?.Headers?.ContentType?.MediaType == "application/xml")
+        string? mediaType = httpResponse.Content.Headers.ContentType?.MediaType;
+        if (mediaType == "application/xml")
         {
             var serializer = new XmlSerializer(typeof(Response));
             var xmlReader = XmlReader.Create(new StringReader(responseString));
-            return (Response?) serializer.Deserialize(xmlReader);
+            return (Response?)serializer.Deserialize(xmlReader);
+        }
+        else if (mediaType == "application/json")
+        {
+            return JsonSerializer.Deserialize<Response>(responseString, _jsonSerializerOptions);
         }
         else
         {
-            return JsonSerializer.Deserialize<Response>(responseString, _jsonSerializerOptions);
+            throw new InternetArchiveResponseException($"Unexpected media type: {mediaType}");
         }
     }
 
     internal async Task<Response?> SendAsync<Response>(HttpMethod httpMethod, string url, object content, CancellationToken cancellationToken)
     {
-        var json = JsonSerializer.Serialize(content, _jsonSerializerOptions);
-        var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
+        return await SendAsync<Response>(httpMethod, url, content, requestHeaders: null, cancellationToken).ConfigureAwait(false);
+    }
 
+    internal async Task<Response?> SendAsync<Response>(HttpMethod httpMethod, string url, object content, Dictionary<string, string?>? requestHeaders, CancellationToken cancellationToken)
+    {
         using var httpRequest = new HttpRequestMessage
         {
             RequestUri = new Uri(url),
             Method = httpMethod,
-            Content = stringContent
         };
+
+        if (requestHeaders != null)
+        {
+            foreach (var header in requestHeaders)
+            {
+                httpRequest.Headers.Add(header.Key, header.Value);
+            }
+        }
+
+        if (content is Dictionary<string, object> dictionary)
+        {
+            // Wayback API requires form data
+            var formData = dictionary.Select(x => new KeyValuePair<string, string>(x.Key, x.Value?.ToString() ?? string.Empty));
+            httpRequest.Content = new FormUrlEncodedContent(formData);
+        }
+        else
+        {
+            var json = JsonSerializer.Serialize(content, _jsonSerializerOptions);
+            httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
+        }
 
         return await SendAsync<Response>(httpRequest, cancellationToken).ConfigureAwait(false);
     }

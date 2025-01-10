@@ -11,8 +11,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>6.0.0</Version>
-    <Copyright>Copyright © 2023-4 Experimental Television Center Ltd.</Copyright>
+    <Version>6.1.0</Version>
+    <Copyright>Copyright © 2023-5 Experimental Television Center Ltd.</Copyright>
     <License>MIT</License>
     <Authors>Experimental Television Center Ltd.</Authors>
     <PackageId>InternetArchive.NET</PackageId>

@@ -1,3 +1,5 @@
+using System.Xml.Linq;
+
 namespace InternetArchiveTests;
 
 [TestClass]
@@ -31,7 +33,7 @@ public class WaybackTests
         Assert.AreEqual(25, response2.Results.Count);
         Assert.AreEqual(25, response2.Results.Select(x => x.Timestamp).Except(response1.Results.Select(x => x.Timestamp)).Count());
 
-#pragma warning disable CS0612 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
         try
         {
             var response3 = await _client.Wayback.SearchAsync(
@@ -49,7 +51,7 @@ public class WaybackTests
         {
             Assert.IsTrue(ex.Message.Contains("no longer supported"));
         }
-#pragma warning restore CS0612
+#pragma warning restore CS0618
     }
 
     [TestMethod]
@@ -58,14 +60,14 @@ public class WaybackTests
         var startTime = new DateTime(2000, 1, 1);
         var endTime = new DateTime(2002, 1, 1);
 
-        var response = await _client.Wayback.SearchAsync(
-            new Wayback.SearchRequest
-            {
-                Url = "www.experimentaltvcenter.org",
-                StartTime = startTime,
-                EndTime = endTime
-            }
-        );
+        var request = new Wayback.SearchRequest
+        {
+            Url = "www.experimentaltvcenter.org",
+            StartTime = startTime,
+            EndTime = endTime
+        };
+
+        var response = await _client.Wayback.SearchAsync(request);
 
         Assert.IsNotNull(response);
         Assert.IsFalse(response.Results.Any(x => x.Timestamp < startTime));
@@ -91,5 +93,51 @@ public class WaybackTests
             if (response.ResumeKey == null) break;
             request.ResumeKey = response.ResumeKey;
         }
+    }
+
+    private static async Task<string> GetRandomUrlAsync(string sitemapUrl)
+    {
+        var sitemap = await _httpClient.GetStringAsync(sitemapUrl);
+        var sitemapXml = XDocument.Parse(sitemap);
+
+        XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
+
+        var urls = sitemapXml.Descendants(ns + "loc").Select(loc => loc.Value).ToList();
+        if (urls.Count == 0) throw new Exception($"No URLs found in the sitemap {sitemapUrl}");
+
+        var index = _random.Next(urls.Count);
+        return urls[index] ?? throw new Exception("URL is null");
+    }
+
+    [TestMethod]
+    public async Task SavePageAsync()
+    {
+        var url = await GetRandomUrlAsync("https://www.videohistoryproject.org/sitemap.xml");
+
+        var request = new Wayback.SavePageRequest
+        {
+            Url = url,
+            JavascriptTimeout = 0
+        };
+
+        var response = await _client.Wayback.SavePageAsync(request);
+
+        Assert.IsNotNull(response);
+        Assert.IsNotNull(response.Url);
+        Assert.IsNotNull(response.JobId);
+
+        var status = await _client.Wayback.GetSavePageStatusAsync(response.JobId);
+
+        Assert.IsNotNull(status);
+    }
+
+    [TestMethod]
+    public async Task SavePageGetSystemStatusAsync()
+    {
+        var response = await _client.Wayback.GetSavePageSystemStatusAsync();
+
+        Assert.IsNotNull(response);
+        Assert.IsNotNull(response.Status);
+        Assert.IsNotNull(response.RecentCaptures);
     }
 }

@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -23,13 +24,16 @@ using System.Threading;
 namespace InternetArchiveTests;
 
 [TestClass()]
-public class Init
+public static class Init
 {
     internal static Client _client = null!;
     internal static Config _config = null!;
 
     internal static DateOnly _startDateOnly, _endDateOnly;
     internal static DateTime _startDateTime, _endDateTime;
+
+    internal static HttpClient _httpClient = new();
+    internal static Random _random = new();
 
     [AssemblyInitialize]
     public static void TestInitialize(TestContext _)
@@ -172,7 +176,7 @@ public class Init
             Assert.IsTrue(response.Success);
 
             var summary = response.Value!.Summary!;
-            Assert.IsTrue(summary.Error == 0);
+            Assert.AreEqual(0, summary.Error);
 
             if (summary.Queued == 0 && summary.Running == 0) return;
             await Task.Delay(secondsBetween * 1000);

@@ -371,9 +371,11 @@ var itemSummariesPerDay = await archive.GetItemSummaryPerDayAsync<DateTime>(new 
 <br />
 
 # Wayback API
-Retrieve snapshots of archived web sites.<br />
-https://github.com/internetarchive/wayback/tree/master/wayback-cdx-server  
+Save and retrieve snapshots of archived web sites.<br />
+https://github.com/internetarchive/wayback/tree/master/wayback-cdx-server<br />
+https://docs.google.com/document/d/1Nsv52MvSjbLb2PCpHlat0gkzw0EvtSgpKHu4mk0MnrA
 
+Search the Wayback Machine:
 
 ```csharp
 var request = new Wayback.SearchRequest
@@ -392,4 +394,22 @@ while (response.ResumeKey != null)
     request.ResumeKey = response.ResumeKey;
     response = await archive.Wayback.SearchAsync(request);
 }
+```
+
+Save a page to the Wayback Machine:
+
+```csharp
+var request = new Wayback.SavePageRequest
+{
+    Url = "https://www.experimentaltvcenter.org"
+};
+
+var response = await archive.Wayback.SavePageAsync(request);
+var status = await archive.Wayback.GetSavePageStatusAsync(response.JobId);
+```
+
+Get the Save Page system status:
+
+```csharp
+var response = await _client.Wayback.GetSavePageSystemStatusAsync();
 ```
